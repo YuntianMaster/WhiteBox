@@ -58,7 +58,7 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 		{
 			float RemainingDamage = totalDamage - GetShield();
 
-			//UE_LOG(LogTemp, Warning, TEXT("RemainingDamage:%f"), RemainingDamage);
+			UE_LOG(LogTemp, Warning, TEXT("RemainingDamage:%f"), RemainingDamage);
 			if(RemainingDamage>0)
 				SetHealth(GetHealth() - RemainingDamage);
 
