@@ -6,6 +6,7 @@
 #include "Widget/SkillWidget.h"
 #include "Widget/PlayerMainWidget.h"
 #include "UObject/ConstructorHelpers.h"
+#include "AbilitySystemComponent.h"
 
 UGA_GameAblilityBase::UGA_GameAblilityBase()
 {
@@ -28,6 +29,19 @@ void UGA_GameAblilityBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorI
 	{
 		CharRef->PlayerHUD->UpdatePlayerHUD();
 	}
+
+	if (bAutoActive)
+	{
+		UAbilitySystemComponent* ASCForActivate = nullptr;
+		ASCForActivate = ActorInfo->AbilitySystemComponent.Get();
+		
+		if (ASCForActivate)
+		{
+			ASCForActivate->TryActivateAbility(Spec.Handle);
+		}
+	}
+
+
 }
 
 void UGA_GameAblilityBase::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
@@ -59,10 +73,14 @@ void UGA_GameAblilityBase::TryCacheCharacterRefs(const FGameplayAbilityActorInfo
 	{
 		CharRef = Cast<APlayerCharacter>(GetOwningActorFromActorInfo());
 	}
+
 	if (!CharRef)
 	{
 		return;
 	}
+
+	
+
 	AnimInstance = CharRef->GetMesh() ? CharRef->GetMesh()->GetAnimInstance() : nullptr;
 }
 

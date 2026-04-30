@@ -35,7 +35,12 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ability")
 	class UBasicAttributeSet* AttributeSet;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ability")
+	class UCombatAttributeSet* CombatAttributeSet;
+
 	EGameplayEffectReplicationMode AscReplicationMode = EGameplayEffectReplicationMode::Mixed;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Ability")
+	TArray<TSubclassOf<UGameplayAbility>> InitalAbilities;
 
 	UFUNCTION()
 	void OnDeadTagChange(const FGameplayTag CallBackTag, int32 Newcount);
@@ -82,6 +87,9 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	class UPlayerMainWidget* PlayerHUD;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UTalentComp* TalentComp;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

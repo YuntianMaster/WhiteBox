@@ -22,7 +22,14 @@ public:
 	class UTakeDownComponent* TakeDownComp;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	class UWeaknessSystem* WeaknessComp;
-
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UAbilitySystemComponent* AbilitySysComp;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UBasicAttributeSet* BasicAttributeSet;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UCombatAttributeSet* CombatAttributeSet;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UWidgetComponent* CharacterUI;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

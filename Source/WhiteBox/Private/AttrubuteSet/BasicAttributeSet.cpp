@@ -48,7 +48,6 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 {
 	Super::PostGameplayEffectExecute(Data);
 
-
 	if (Data.EvaluatedData.Attribute == GetDamageAttribute())
 	{
 		float totalDamage = GetDamage();
@@ -57,8 +56,7 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 		if (GetShield() > 0)
 		{
 			float RemainingDamage = totalDamage - GetShield();
-
-			UE_LOG(LogTemp, Warning, TEXT("RemainingDamage:%f"), RemainingDamage);
+			SetShield(GetShield() - totalDamage);
 			if(RemainingDamage>0)
 				SetHealth(GetHealth() - RemainingDamage);
 
@@ -77,4 +75,10 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 	else if (Data.EvaluatedData.Attribute == GetStaminaAttribute()) {
 		SetStamina(GetStamina());
 	}
+
+	if(Data.EvaluatedData.Attribute == GetMaxHealthAttribute())
+	{
+		SetHealth(GetMaxHealth());
+	}
+
 }

@@ -8,6 +8,7 @@
 #include "GeneralProjectile.generated.h"
 
 class APickUpActor;
+class UGameplayAbility;
 UCLASS()
 class WHITEBOX_API AGeneralProjectile : public AActor,public IFighter
 {
@@ -20,9 +21,21 @@ public:
 	class UProjectileMovementComponent* ProjectileMoveComp;
 	ACharacter* Char;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UAbilitySystemComponent* AbilitySysComp;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UBasicAttributeSet* BasicAttributeSet;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UCombatAttributeSet* CombatAttributeSet;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<TSubclassOf<UGameplayAbility>> InitalAbilities;
+	
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	UPROPERTY(BlueprintReadWrite)
+	AActor* TargetActor;
 
 public:	
 	// Called every frame

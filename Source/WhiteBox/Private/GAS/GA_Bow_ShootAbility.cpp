@@ -103,7 +103,7 @@ void UGA_Bow_ShootAbility::OnBowTargetDataValid(const FGameplayAbilityTargetData
 		return;
 	}
 
-
+	
 
 
 
@@ -112,7 +112,7 @@ void UGA_Bow_ShootAbility::OnBowTargetDataValid(const FGameplayAbilityTargetData
 	AActor* SpawnedActor = nullptr;
 	if (SpawnTask->BeginSpawningActor(this, ArrowData, ShootArrowActor, SpawnedActor))
 	{
-
+		SpawnedActor->SetInstigator(Cast<APawn>(GetAvatarActorFromActorInfo()));
 		SpawnTask->FinishSpawningActor(this, ArrowData, SpawnedActor);
 	}
 	

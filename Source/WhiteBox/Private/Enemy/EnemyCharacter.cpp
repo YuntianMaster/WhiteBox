@@ -8,6 +8,9 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Engine/CollisionProfile.h"
 #include "Enemy/WeaknessSystem.h"
+#include "AbilitySystemComponent.h"
+#include "AttrubuteSet/BasicAttributeSet.h"
+#include "AttrubuteSet/CombatAttributeSet.h"
 #include "Player/StatsComponent.h"
 
 // Sets default values
@@ -21,9 +24,12 @@ AEnemyCharacter::AEnemyCharacter()
 	//UIComp->SetupAttachment(GetMesh());
 	SkelealComp = GetComponentByClass<USkeletalMeshComponent>();
 	WeaknessComp = CreateDefaultSubobject<UWeaknessSystem>(TEXT("WeaknessSystemComp"));
-	
-
-
+	AbilitySysComp = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySysComp"));
+	BasicAttributeSet = CreateDefaultSubobject<UBasicAttributeSet>(TEXT("BasicAttributeSet"));
+	CombatAttributeSet = CreateDefaultSubobject<UCombatAttributeSet>(TEXT("CombatAttributeSet"));
+	CharacterUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComp"));
+	CharacterUI->SetupAttachment(GetMesh());
+		
 }
 
 // Called when the game starts or when spawned

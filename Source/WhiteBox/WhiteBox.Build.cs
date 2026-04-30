@@ -20,7 +20,8 @@ public class WhiteBox : ModuleRules
             "Niagara",
 			"UMG",
             "EnhancedInput",
-            "GameplayAbilities"
+            "GameplayAbilities",
+			"AdvancedWidgets"
         });
 		
 		

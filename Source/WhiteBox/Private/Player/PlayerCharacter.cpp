@@ -17,8 +17,10 @@
 #include "Travel/CollectionComp.h"
 #include "AbilitySystemComponent.h"
 #include "AttrubuteSet/BasicAttributeSet.h"
+#include "AttrubuteSet/CombatAttributeSet.h"
 #include "Player/UnlockActionComponent.h"
 #include "Player/CamerManagerComponent.h"
+#include "Player/TalentComp.h"
 
 
 // Sets default values
@@ -42,6 +44,8 @@ APlayerCharacter::APlayerCharacter()
 	AbilitySystemComp = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystem"));
 	AttributeSet = CreateDefaultSubobject<UBasicAttributeSet>(TEXT("AttributeSet"));
 	CameraManager = CreateDefaultSubobject<UCamerManagerComponent>(TEXT("CameraManager"));
+	CombatAttributeSet = CreateOptionalDefaultSubobject<UCombatAttributeSet>(TEXT("CombatAttributeSet"));
+	TalentComp = CreateDefaultSubobject<UTalentComp>(TEXT("TalentComp"));
 	
 	AbilitySystemComp->RegisterGameplayTagEvent(FGameplayTag::RequestGameplayTag("Stats.Dead"))
 		.AddUObject(this,&APlayerCharacter::OnDeadTagChange);
@@ -122,6 +126,18 @@ void APlayerCharacter::BeginPlay()
 	AbilitySystemComp->SetIsReplicated(true);
 	AbilitySystemComp->SetReplicationMode(AscReplicationMode);
 	AbilitySystemComp->InitAbilityActorInfo(this, this);
+
+	for (TSubclassOf<UGameplayAbility> ablility : InitalAbilities) {
+
+		FGameplayAbilitySpecHandle SpecHandle  = AbilitySystemComp->GiveAbility(FGameplayAbilitySpec(
+			ablility,
+			1,
+			-1,
+			this
+		));
+
+	}
+
 }
 
 void APlayerCharacter::PossessedBy(AController* NewController)

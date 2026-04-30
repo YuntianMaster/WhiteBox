@@ -15,6 +15,10 @@ class WHITEBOX_API UGAS_Caculation_Shield : public UGameplayModMagnitudeCalculat
 	GENERATED_BODY()
 
 public:
+	UGAS_Caculation_Shield();
 	virtual float CalculateBaseMagnitude_Implementation(const FGameplayEffectSpec& Spec) const override;
+
+	FGameplayEffectAttributeCaptureDefinition StrengthDef;
+	FGameplayEffectAttributeCaptureDefinition ArmorDef;
 	
 };

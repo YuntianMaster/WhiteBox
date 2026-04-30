@@ -10,6 +10,10 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Interface/Damageable.h"
 #include "Interface/ProjectileInteractable.h"
+#include "AbilitySystemComponent.h"
+#include "AttrubuteSet/BasicAttributeSet.h"
+#include "AttrubuteSet/CombatAttributeSet.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
 // Sets default values
@@ -18,6 +22,10 @@ AGeneralProjectile::AGeneralProjectile()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	ProjectileMoveComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("MovementComp"));
+	AbilitySysComp = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySysComp"));
+	BasicAttributeSet = CreateDefaultSubobject<UBasicAttributeSet>(TEXT("BasicAttributeSet"));
+	CombatAttributeSet = CreateDefaultSubobject<UCombatAttributeSet>(TEXT("CombatAttributeSet"));
+
 
 	// 避免高速子弹穿透：启用子步进，提高模拟精度
 	if (ProjectileMoveComp)
@@ -28,14 +36,15 @@ AGeneralProjectile::AGeneralProjectile()
 		// 每帧最多子步次数
 		ProjectileMoveComp->MaxSimulationIterations = 8;
 	}
-
+	
 }
 
 // Called when the game starts or when spawned
 void AGeneralProjectile::BeginPlay()
 {
+	
 	Super::BeginPlay();
-	Char = Cast<ACharacter>(GetWorld()->GetFirstPlayerController()->GetPawn());
+	Char = Cast<ACharacter>(GetInstigator());
 	NiagaraComp = GetComponentByClass<UNiagaraComponent>();
 	if (NiagaraComp)
 	{
@@ -52,6 +61,18 @@ void AGeneralProjectile::BeginPlay()
 	UStaticMeshComponent* Mesh = GetComponentByClass<UStaticMeshComponent>();
 	if (Mesh)
 		Mesh->SetUseCCD(true);
+
+	for (TSubclassOf<UGameplayAbility> ablility : InitalAbilities) {
+
+		FGameplayAbilitySpecHandle SpecHandle = AbilitySysComp->GiveAbility(FGameplayAbilitySpec(
+			ablility,
+			1,
+			-1,
+			this
+		));
+
+	}
+
 }
 
 // Called every frame
@@ -68,7 +89,7 @@ void AGeneralProjectile::DestoryProjectile() {
 
 void AGeneralProjectile::AttachProjectileToSocket()
 {
-
+	
 	USkeletalMeshComponent* Mesh = Char->GetMesh();
 	if (!Mesh)
 	{
@@ -105,6 +126,7 @@ void AGeneralProjectile::DetachProjectileToSocket()
 
 void AGeneralProjectile::Fire(float CharingTime)
 {
+
 	if (!Char)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("AGeneralProjectile::Fire Char is null"));
@@ -158,6 +180,7 @@ void AGeneralProjectile::Fire(float CharingTime)
 
 void AGeneralProjectile::OnHitHandle(AActor* HitObject)
 {
+	//用GAS重新判断！
 	if (!HitObject)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("OnHitHandle called with null HitObject"));
@@ -173,9 +196,27 @@ void AGeneralProjectile::OnHitHandle(AActor* HitObject)
 		UE_LOG(LogTemp, Warning, TEXT("HitObject has no valid root component: %s"), *HitObject->GetName());
 		return;
 	}
+	UE_LOG(LogTemp, Warning, TEXT("GetInstigator: %s"), *GetInstigator()->GetName());
 
 
+	FGameplayTag EventArrowHit = FGameplayTag::RequestGameplayTag(FName("Event.Arrow.Hit"));
+	FGameplayEventData Playload_ArrowHit;
+	Playload_ArrowHit.EventTag = EventArrowHit;
+	Playload_ArrowHit.Instigator = GetInstigator();
+	Playload_ArrowHit.Target = HitObject;
 
+	FGameplayAbilityTargetData_ActorArray* const ActorTargetData =
+		new FGameplayAbilityTargetData_ActorArray();
+	ActorTargetData->TargetActorArray.Add(HitObject);
+	FGameplayAbilityTargetDataHandle TargetHandle;
+	TargetHandle.Add(ActorTargetData);
+	Playload_ArrowHit.TargetData = TargetHandle;
+
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+		GetInstigator(),
+		EventArrowHit,
+		Playload_ArrowHit);
+	TargetActor = HitObject;
 
 
 	TArray<AActor*> ActorsToIgnore;
@@ -284,7 +325,7 @@ void AGeneralProjectile::OnHitHandle(AActor* HitObject)
 
 
 	
-	Destroy();
+	//Destroy();
 
 	auto Responses = HitRootComp->GetCollisionResponseToChannels();
 	if (Responses.GetResponse(ECC_GameTraceChannel5) == ECR_Block)
