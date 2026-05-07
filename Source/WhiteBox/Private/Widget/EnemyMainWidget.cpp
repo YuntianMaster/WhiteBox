@@ -24,12 +24,49 @@ void UEnemyMainWidget::NativeConstruct()
 		UE_LOG(LogTemp, Error, TEXT("UEnemyMainWidget: no AbilitySystemComponent on EnemyInstigatorActor"));
 		return;
 	}
-	ASC->RegisterGameplayTagEvent(FGameplayTag::RequestGameplayTag("Status.Debuff")).
+	//ASC->RegisterGameplayTagEvent(FGameplayTag::RequestGameplayTag("Status.Debuff")).
+	//	AddUObject(this, &UEnemyMainWidget::UpdateDebuffHandle);
+
+	ASC->RegisterGenericGameplayTagEvent().
 		AddUObject(this, &UEnemyMainWidget::UpdateDebuffHandle);
+
+	ASC->OnAnyGameplayEffectRemovedDelegate().AddLambda(
+		[](const FActiveGameplayEffect& Effect)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Removed GE: %s"),
+				*Effect.Spec.Def->GetName());
+		});
+
+
 }
 
 void UEnemyMainWidget::UpdateDebuffHandle(const FGameplayTag callback, int32 NewTag)
 {
+
+	if (ASC)
+	{
+		const AActor* Owner = ASC->GetOwnerActor();
+		const AActor* Avatar = ASC->GetAvatarActor_Direct(); // 若你引擎版本没有 _Direct，改用 GetAvatarActor()
+		const UWorld* World = ASC->GetWorld();
+		UE_LOG(LogTemp, Warning, TEXT("[ASC] Ptr=%p Name=%s Owner=%s Avatar=%s"),
+			ASC,
+			ASC ? *ASC->GetName() : TEXT("null"),
+			Owner ? *Owner->GetName() : TEXT("null"),
+			Avatar ? *Avatar->GetName() : TEXT("null"));
+		if (EnemyInstigatorActor)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Widget] EnemyInstigatorActor=%s Ptr=%p"),
+				*EnemyInstigatorActor->GetName(),
+				EnemyInstigatorActor);
+		}
+		if (World)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Net] NetMode=%d LocalRole=%d"),
+				(int32)World->GetNetMode(),
+				(int32)ASC->GetOwnerRole());
+		}
+	}
+
 
 	DebuffContainer->ClearChildren();
 
@@ -39,23 +76,27 @@ void UEnemyMainWidget::UpdateDebuffHandle(const FGameplayTag callback, int32 New
 	}
 	FString TagName = callback.GetTagName().ToString();
 	UE_LOG(LogTemp, Warning, TEXT("TAG [%s] NUM: %i"),*TagName, NewTag);
+	FGameplayTagContainer DebuffTags;
+	DebuffTags.AddTag(FGameplayTag::RequestGameplayTag("Status.Debuff"));
+	TArray<FActiveGameplayEffectHandle> Handles = ASC->GetActiveEffectsWithAllTags(DebuffTags);
+	UE_LOG(LogTemp, Warning, TEXT("[Debuff] GetActiveEffectsWithAllTags Num=%d"), Handles.Num());
 
-	
-	FGameplayEffectQuery EffectQuery;
-	FGameplayTagContainer Tags;
-	Tags.AddTag(callback);
-	EffectQuery.MakeQuery_MatchAnyOwningTags(Tags);
-	
-	TArray<FActiveGameplayEffectHandle> ActiveEffects = ASC->GetActiveEffects(EffectQuery);
 
-	for (FActiveGameplayEffectHandle effect : ActiveEffects) {
+	FGameplayEffectQuery Query;
+	ASC->GetActiveEffects(Query);
+
+	for (const FActiveGameplayEffectHandle& effect : ASC->GetActiveEffects(Query))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ActiveEffects: count: %i"), ASC->GetActiveEffects(Query).Num());
+		const UGameplayEffect* GEDef = ASC->GetActiveGameplayEffect(effect)->Spec.Def;
+		UE_LOG(LogTemp, Warning, TEXT("UGameplayEffect: %s , count: %i"), *GEDef->GetName(), ASC->GetActiveGameplayEffect(effect)->Spec.GetStackCount());
+	}
+
+	for (const FActiveGameplayEffectHandle& effect : ASC->GetActiveEffectsWithAllTags(DebuffTags)){
 		
 		
 		FGameplayEffectSpec GESpec =  ASC->GetActiveGameplayEffect(effect)->Spec;
-
-			
 		const UGameplayEffect* GEDef = GESpec.Def;
-		UE_LOG(LogTemp, Warning, TEXT("UGameplayEffect: %s , count: %i"), *GEDef->GetName(), GESpec.GetStackCount());
 		const UGE_GameEffectBse* GameEffectBse = Cast<UGE_GameEffectBse>(GEDef);
 		if (!GameEffectBse)
 		{
