@@ -14,6 +14,7 @@
 #include "AttrubuteSet/BasicAttributeSet.h"
 #include "AttrubuteSet/CombatAttributeSet.h"
 #include "AbilitySystemBlueprintLibrary.h"
+#include "Kismet/GameplayStatics.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
 // Sets default values
@@ -62,15 +63,14 @@ void AGeneralProjectile::BeginPlay()
 	if (Mesh)
 		Mesh->SetUseCCD(true);
 
-	for (TSubclassOf<UGameplayAbility> ablility : InitalAbilities) {
-
-		FGameplayAbilitySpecHandle SpecHandle = AbilitySysComp->GiveAbility(FGameplayAbilitySpec(
-			ablility,
-			1,
-			-1,
-			this
-		));
-
+	for (TSubclassOf<UGameplayAbility> ablility : InitalAbilities)
+	{
+		if (!*ablility)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("GeneralProjectile: Skipping null entry in InitalAbilities."));
+			continue;
+		}
+		AbilitySysComp->GiveAbility(FGameplayAbilitySpec(ablility, 1, -1, this));
 	}
 
 }
@@ -133,15 +133,18 @@ void AGeneralProjectile::Fire(float CharingTime)
 		return;
 	}
 
-	UCameraComponent* CameraComp = Char->GetComponentByClass<UCameraComponent>();
+	APlayerCameraManager* CameraComp = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
+
+
+	//UCameraComponent* CameraComp = Char->GetComponentByClass<UCameraComponent>();
 	if (!CameraComp)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("AGeneralProjectile::Fire CameraComponent is null"));
 		return;
 	}
 
-	FVector CameraDirection = CameraComp->GetForwardVector() * 10000;
-	FVector CamerStart = CameraComp->GetComponentLocation();
+	FVector CameraDirection = CameraComp->GetCameraRotation().Vector() * 10000.f;
+	FVector CamerStart = CameraComp->GetCameraLocation();
 	FVector CamerEnd = CamerStart + CameraDirection;
 
 	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
@@ -187,8 +190,15 @@ void AGeneralProjectile::OnHitHandle(AActor* HitObject)
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Hitted! %s"), *HitObject->GetName());
-	if (HitObject->Tags.Contains("Player")|| HitObject->Tags.Contains("Arrow"))return;
+	if (!GetInstigator())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No GetInstigator"));
+		return;
+	}
+
+	//UE_LOG(LogTemp, Warning, TEXT("Hitted! %s"), *HitObject->GetName());
+	//UE_LOG(LogTemp, Warning, TEXT("OnHitHandle Instigator: is %s"), *GetInstigator()->GetName());
+	if (HitObject == GetInstigator() || HitObject->Tags.Contains("Projectile")) return;
 
 	USceneComponent* HitRootComp = HitObject->GetRootComponent();
 	if (!HitRootComp)
@@ -204,6 +214,7 @@ void AGeneralProjectile::OnHitHandle(AActor* HitObject)
 	Playload_ArrowHit.EventTag = EventArrowHit;
 	Playload_ArrowHit.Instigator = GetInstigator();
 	Playload_ArrowHit.Target = HitObject;
+	
 
 	FGameplayAbilityTargetData_ActorArray* const ActorTargetData =
 		new FGameplayAbilityTargetData_ActorArray();
@@ -235,6 +246,29 @@ void AGeneralProjectile::OnHitHandle(AActor* HitObject)
 		Hits,
 		true
 	);
+
+	if (bSphereHit)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Projectile Hit Actor is :%s"), *Hits.GetActor()->GetName());
+		FGameplayTag TakeHitTag = FGameplayTag::RequestGameplayTag("Event.Combat.TakeHit");
+		
+
+		FGameplayAbilityTargetData_SingleTargetHit* const SingleHit = new FGameplayAbilityTargetData_SingleTargetHit();
+		SingleHit->HitResult = Hits;
+		FGameplayEventData TakeHitData;
+		TakeHitData.Instigator = GetInstigator();
+		TakeHitData.TargetData.Add(SingleHit);
+		TakeHitData.EventMagnitude = DamageMagnitude;
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+			Hits.GetActor(),
+			TakeHitTag,
+			TakeHitData
+		);
+
+
+		Destroy();
+	}
+
 	if (!bSphereHit)
 	{
 		bSphereHit = UKismetSystemLibrary::SphereTraceSingle(

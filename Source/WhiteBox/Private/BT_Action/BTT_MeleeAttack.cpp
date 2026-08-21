@@ -7,105 +7,56 @@
 #include "Interface/Fighter.h"
 #include "GameFramework/Character.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "AbilitySystemComponent.h"
+#include "AttrubuteSet/CombatAttributeSet.h"
 #include "Navigation/PathFollowingComponent.h"
 
 
 
 
-UBTT_MeleeAttack::UBTT_MeleeAttack() {
-
-	bNotifyTick = true;
-	MoveDelegate.BindUFunction(this, "OnMoveCompleted");
-}
 
 EBTNodeResult::Type UBTT_MeleeAttack::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
 
-	//UE_LOG(LogTemp, Warning, TEXT("START"));
-	bIsMoveComplete = false;
-	float distance = OwnerComp.GetBlackboardComponent()->GetValueAsFloat(TEXT("Distance"));
-	AAIController* AIRef{ OwnerComp.GetAIOwner() };
-	if (distance > MeleeAttackRange) 
+
+	AAIController* const AI = OwnerComp.GetAIOwner();
+	UBlackboardComponent* const BB = OwnerComp.GetBlackboardComponent();
+	if (!AI || !BB)
 	{
-		
-		FAIMoveRequest MoveRequest{ OwnerComp.GetWorld()->GetFirstPlayerController()->GetPawn() };
-		MoveRequest.SetUsePathfinding(true);
-		MoveRequest.SetAcceptanceRadius(AcceptRadius);
-		AIRef->MoveTo(MoveRequest);
-		AIRef->ReceiveMoveCompleted.AddUnique(MoveDelegate);
+		UE_LOG(LogTemp, Warning, TEXT("[BTT_FocusTarget] AI or Blackboard null (AI=%p BB=%p)"), AI, BB);
+		return EBTNodeResult::Failed;
 	}
 
-
-	else {
-
-		bIsAttackComplete = false;
-		IFighter* FigtherRef{
-			Cast<IFighter>(AIRef->GetCharacter())
-		};
-		FigtherRef->Attack();
-
-		FTimerHandle AttackTimeHandle;
-
-		AIRef->GetCharacter()->GetWorldTimerManager().SetTimer(
-			AttackTimeHandle,
-			this,
-			&UBTT_MeleeAttack::FinishAttack,
-			FigtherRef->GetAttackDuration());
-	}
-	return EBTNodeResult::Type::InProgress;
-}
-
-
-
-
-void UBTT_MeleeAttack::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
-{
-
-	AAIController* AIRef{ OwnerComp.GetAIOwner() };
-	IFighter* FigtherRef{
-			Cast<IFighter>(AIRef->GetCharacter())
-	};
-	float distance = OwnerComp.GetBlackboardComponent()->GetValueAsFloat(TEXT("Distance"));
-	if (distance > FigtherRef->GetMeleeRange()) {
-
-		OwnerComp.GetBlackboardComponent()->SetValueAsEnum(TEXT("BossStats"), EBossStats::Range);
-		AbortTask(OwnerComp, NodeMemory);
-		FinishLatentTask(OwnerComp, EBTNodeResult::Aborted);
-		AIRef->StopMovement();
-		AIRef->ReceiveMoveCompleted.Remove(MoveDelegate);
-	}
+	UAbilitySystemComponent* ASC = AI->GetPawn()->GetComponentByClass<UAbilitySystemComponent>();
+	static const FName TargetKey(TEXT("TargetActor"));
+	UObject* const TargetObject = BB->GetValueAsObject(TargetKey);
+	AActor* const TargetActor = Cast<AActor>(TargetObject);
 	
-	
-	
-	if (!bIsMoveComplete)
+	if(!ASC)
 	{
-		if (AIRef->GetMoveStatus() == EPathFollowingStatus::Idle)
-		{
-			// AI 已经停止但未触发 MoveCompleted
-			bIsMoveComplete = true;
-		}
-		else
-		{
-			return;
-		}
+		UE_LOG(LogTemp, Warning, TEXT("No ASC!"));
+		return EBTNodeResult::Failed;
 	}
 
-	if (!bIsAttackComplete) return;
-	
-	
-	OwnerComp.GetAIOwner()->ReceiveMoveCompleted.Remove(MoveDelegate);
+	if(!ASC->GetAttributeSet(UCombatAttributeSet::StaticClass()))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No AttributeSet!"));
+		return EBTNodeResult::Failed;
+	}
+	float MeleeAttackRange = Cast<UCombatAttributeSet>(ASC->GetAttributeSet(UCombatAttributeSet::StaticClass()))->GetMeleeAttackRange();
 
-	FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);
+
+	if(!TargetActor)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No Target!"));
+		return EBTNodeResult::Failed;
+	}
+
+
+	ASC->TryActivateAbilitiesByTag(FGameplayTagContainer{ FGameplayTag::RequestGameplayTag(TEXT("GamePlayAbility.Combat.Attack.Melee")) }, false);
+	return EBTNodeResult::Succeeded;
 }
 
-void UBTT_MeleeAttack::FinishAttack()
-{
-	bIsAttackComplete = true;
-}
 
 
-void UBTT_MeleeAttack::OnMoveCompleted()
-{
-	bIsMoveComplete = true;
-}
 

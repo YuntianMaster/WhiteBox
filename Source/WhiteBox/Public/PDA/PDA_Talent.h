@@ -12,6 +12,8 @@ DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE(FTalentLevelUpDelegate, UPDA_Talent, O
  * 
  */
 UCLASS()
+
+
 class WHITEBOX_API UPDA_Talent : public UPrimaryDataAsset
 {
 	GENERATED_BODY()

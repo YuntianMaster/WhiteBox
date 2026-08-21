@@ -9,6 +9,7 @@
 #include "Combat/PlayerBlockComponent.h"
 #include "BrainComponent.h"
 #include "Enemy/BossCharater.h"
+#include "GameFramework/MovementComponent.h"
 #include "Player/TravelingComp.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Player/PlayerActionsComponent.h"
@@ -21,6 +22,12 @@
 #include "Player/UnlockActionComponent.h"
 #include "Player/CamerManagerComponent.h"
 #include "Player/TalentComp.h"
+#include "GameFramework/GameplayCameraComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/StateTreeComponent.h"
+#include "TimerManager.h"
 
 
 // Sets default values
@@ -46,15 +53,9 @@ APlayerCharacter::APlayerCharacter()
 	CameraManager = CreateDefaultSubobject<UCamerManagerComponent>(TEXT("CameraManager"));
 	CombatAttributeSet = CreateOptionalDefaultSubobject<UCombatAttributeSet>(TEXT("CombatAttributeSet"));
 	TalentComp = CreateDefaultSubobject<UTalentComp>(TEXT("TalentComp"));
-	
-	AbilitySystemComp->RegisterGameplayTagEvent(FGameplayTag::RequestGameplayTag("Stats.Dead"))
-		.AddUObject(this,&APlayerCharacter::OnDeadTagChange);
-	AbilitySystemComp->RegisterGameplayTagEvent(FGameplayTag::RequestGameplayTag("Stats.Blocking"))
-		.AddUObject(this, &APlayerCharacter::OnBockingTagChange);
-	AbilitySystemComp->RegisterGameplayTagEvent(FGameplayTag::RequestGameplayTag("Stats.Aiming"))
-		.AddUObject(this, &APlayerCharacter::OnAimingTagChange);
-	AbilitySystemComp->RegisterGameplayTagEvent(FGameplayTag::RequestGameplayTag("Stats.Drawing"))
-		.AddUObject(this, &APlayerCharacter::OnDrawingTagChange);
+	GCC_Camera = CreateDefaultSubobject<UGameplayCameraComponent>(TEXT("GCC_Camera"));
+	GCC_Camera->SetupAttachment(GetCapsuleComponent());
+	StateTreeComp = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComp"));
 }
 
 UAbilitySystemComponent* APlayerCharacter::GetAbilitySystemComponent() const
@@ -104,6 +105,35 @@ void APlayerCharacter::OnDrawingTagChange(const FGameplayTag Callbacktage, int32
 	}
 }
 
+void APlayerCharacter::OnParryingTagChange(const FGameplayTag Callbacktage, int32 NewCount) 
+{
+	if (NewCount > 0)
+	{
+		PlayerStats = EPlayerStates::Parrying;
+		isInbattle = true;
+	}
+	if (NewCount <= 0)
+	{
+		PlayerStats = EPlayerStates::CharacterNoneStats;
+		isInbattle = false;
+	}
+
+}
+
+void APlayerCharacter::OnPoiseMaxTagChange(const FGameplayTag Callbacktage, int32 NewCount)
+{
+	if (NewCount > 0)
+	{
+		PlayerStats = EPlayerStates::PoiseMax;
+	}
+	if (NewCount <= 0)
+	{
+		PlayerStats = EPlayerStates::CharacterNoneStats;
+		
+	}
+
+}
+
 
 
 float APlayerCharacter::OnHandleDeath()
@@ -118,26 +148,45 @@ float APlayerCharacter::OnHandleDeath()
 	return PlayAnimMontage(DeathAnimMontage);
 }
 
+
 // Called when the game starts or when spawned
 void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
 	PlayerAnim =Cast<UPlayerAnimInstance>(GetMesh()->GetAnimInstance());
 	AbilitySystemComp->SetIsReplicated(true);
 	AbilitySystemComp->SetReplicationMode(AscReplicationMode);
 	AbilitySystemComp->InitAbilityActorInfo(this, this);
 
-	for (TSubclassOf<UGameplayAbility> ablility : InitalAbilities) {
+	auto RegisterTagEvent = [this](const FName TagName, void (APlayerCharacter::*Callback)(const FGameplayTag, int32))
+	{
+		const FGameplayTag Tag = FGameplayTag::RequestGameplayTag(TagName, false);
+		if (Tag.IsValid())
+		{
+			AbilitySystemComp->RegisterGameplayTagEvent(Tag).AddUObject(this, Callback);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("PlayerCharacter: GameplayTag '%s' is missing."), *TagName.ToString());
+		}
+	};
+	RegisterTagEvent(TEXT("Stats.Dead"), &APlayerCharacter::OnDeadTagChange);
+	RegisterTagEvent(TEXT("Stats.Blocking"), &APlayerCharacter::OnBockingTagChange);
+	RegisterTagEvent(TEXT("Stats.Aiming"), &APlayerCharacter::OnAimingTagChange);
+	RegisterTagEvent(TEXT("Stats.Drawing"), &APlayerCharacter::OnDrawingTagChange);
+	RegisterTagEvent(TEXT("Stats.Parrying"), &APlayerCharacter::OnParryingTagChange);
+	RegisterTagEvent(TEXT("Stats.PoiseMax"), &APlayerCharacter::OnPoiseMaxTagChange);
 
-		FGameplayAbilitySpecHandle SpecHandle  = AbilitySystemComp->GiveAbility(FGameplayAbilitySpec(
-			ablility,
-			1,
-			-1,
-			this
-		));
-
+	for (TSubclassOf<UGameplayAbility> ablility : InitalAbilities)
+	{
+		if (!*ablility)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("PlayerCharacter: Skipping null entry in InitalAbilities."));
+			continue;
+		}
+		AbilitySystemComp->GiveAbility(FGameplayAbilitySpec(ablility, 1, -1, this));
 	}
-
 }
 
 void APlayerCharacter::PossessedBy(AController* NewController)
@@ -145,6 +194,8 @@ void APlayerCharacter::PossessedBy(AController* NewController)
 	Super::PossessedBy(NewController);
 	if(AbilitySystemComp)
 			AbilitySystemComp->InitAbilityActorInfo(this, this);
+
+	
 }
 
 void APlayerCharacter::OnRep_PlayerState()
@@ -153,6 +204,8 @@ void APlayerCharacter::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 	if (AbilitySystemComp)
 		AbilitySystemComp->InitAbilityActorInfo(this, this);
+
+	
 }
 
 // Called every frame
@@ -253,8 +306,23 @@ void APlayerCharacter::beOnUndectedHandle()
 	);
 }
 
+void APlayerCharacter::UpdateGate(E_Gate GateType)
+{
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	FGateSetting* GateSetting = GateSettings.Find(GateType);
+	if(GateSetting)
+	{
+		MoveComp->MaxWalkSpeed = GateSetting->MaxWalkSpeed;
+		MoveComp->MaxAcceleration = GateSetting->MaxAcceleration;
+		MoveComp->BrakingDecelerationWalking = GateSetting->BrakingDeceleration;
+		MoveComp->BrakingFrictionFactor = GateSetting->BrakingFrictionFactor;
+		MoveComp->BrakingFriction = GateSetting->BrakingFriction;
+		MoveComp->bUseSeparateBrakingFriction = GateSetting->UseSeperateBrakingFriction;
+		PlayerAnim->IncomingGate = GateType;
+	}
 
 
 
+}
 
 

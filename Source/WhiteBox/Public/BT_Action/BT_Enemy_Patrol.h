@@ -20,7 +20,7 @@ public:
 	UPROPERTY(BlueprintReadOnly,EditAnywhere)
 	bool bIsRandomPatrol{ false };
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	TArray<FVector> PatrolPoint;
+	TArray<FVector> PatrolPoints;
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	float AcceptRadiu{ 20.f };
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)

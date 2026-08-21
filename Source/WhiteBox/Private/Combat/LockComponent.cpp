@@ -11,6 +11,8 @@
 #include "Enemy/WeaknessActor.h"
 #include "Enemy/WeaknessSystem.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Player/CamerManagerComponent.h"
+#include "AbilitySystemComponent.h"
 
 
 
@@ -29,14 +31,14 @@ ULockComponent::ULockComponent()
 void ULockComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	OwnRef = GetOwner<ACharacter>();
+	OwnRef = GetOwner<APlayerCharacter>();
 	Controller = GetWorld()->GetFirstPlayerController();
 	MovementComp = OwnRef->GetCharacterMovement();
-	SpringArmComp = OwnRef->FindComponentByClass<USpringArmComponent>();
+	CamerManagerComp = OwnRef->FindComponentByClass<UCamerManagerComponent>();
 
 }
 
-void ULockComponent::OnlockStart(float Radiu)
+void ULockComponent::OnlockStart()
 {
 	 
 	FHitResult Outresult;
@@ -69,7 +71,7 @@ void ULockComponent::OnlockStart(float Radiu)
 	IEnemy::Execute_OnSelect(CurrentTargetActor);
 	//WeaknessActors Update;
 	UWeaknessSystem* EnemyWeakSys = CurrentTargetActor->GetComponentByClass<UWeaknessSystem>();
-	if (!EnemyWeakSys) {
+	if (!EnemyWeakSys) {	
 
 		UE_LOG(LogTemp, Warning, TEXT("Enemy NoWeakSystem"));
 		TargetWeaknessActors.Empty();
@@ -88,7 +90,7 @@ void ULockComponent::OnlockStart(float Radiu)
 	Controller->SetIgnoreLookInput(true);
 	MovementComp->bOrientRotationToMovement = false;
 	MovementComp->bUseControllerDesiredRotation = true;
-	
+	OwnRef->TargetActor = CurrentTargetActor;
 	//Change to BattleMode
 	float During = OwnRef->PlayAnimMontage(BattleAction);
 	APlayerCharacter* CharacterRef{ GetOwner<APlayerCharacter>() };
@@ -107,30 +109,38 @@ void ULockComponent::OnlockStart(float Radiu)
 		false
 	);
 
+	FGameplayTag LockLockTargetTag{ FGameplayTag::RequestGameplayTag("Event.Camera.LockTarget") };
+	CamerManagerComp->CameraChangeHandle(LockLockTargetTag);
 	
 }
 
 void ULockComponent::UnlockTarget()
 {
 	TargetWeaknessActors.Empty();
-	if (!IsValid(CurrentTargetActor)) return;
+	if (!CurrentTargetActor) return;
+
+	// 仍在 Lock Rig 上时写入 Context，再切 Third Person（Context Yaw Pitch 会读这里）
+	CamerManagerComp->SetInitialCameraPose();
 
 	IEnemy::Execute_OnDeSelect(CurrentTargetActor); 
 	CurrentTargetActor = nullptr;
-	SpringArmComp->TargetOffset = FVector{ 0.0f, 0.0f, 0.0f };
+	OwnRef->TargetActor = nullptr;
 	Controller->SetIgnoreLookInput(false);
 	MovementComp->bOrientRotationToMovement = true;
 	MovementComp->bUseControllerDesiredRotation = false;
 	OnUpdateTargetDelegate.Broadcast(CurrentTargetActor);
 
+	FGameplayTag ThirdPersonTag{ FGameplayTag::RequestGameplayTag("Event.Camera.ThirdPerson") };
+	CamerManagerComp->CameraChangeHandle(ThirdPersonTag);
+
 }
 
-void ULockComponent::ToggleLockOn(float Radius)
+void ULockComponent::ToggleLockOn()
 {
 
 	if (IsValid(CurrentTargetActor))
 		UnlockTarget();
-	else OnlockStart(Radius);
+	else OnlockStart();
 
 
 }
@@ -144,19 +154,22 @@ void ULockComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorC
 
 	FVector CurrentLocation{ OwnRef->GetActorLocation() };
 	if (!IsValid(CurrentTargetActor)) return;
+	
 	FVector TargetLocation{ CurrentTargetActor->GetActorLocation() };
+	//UE_LOG(LogTemp, Warning, TEXT("TargetLocation: %s"), *TargetLocation.ToString());
 	TargetLocation.Z -= 100.0f;
 	FRotator newRotation{ UKismetMathLibrary::FindLookAtRotation(CurrentLocation,TargetLocation) };
 	double TargetDistance{ FVector::Distance(CurrentLocation,TargetLocation) };
+
+	//UE_LOG(LogTemp, Warning, TEXT("TargetDistance: %f"), TargetDistance);
 	if (TargetDistance > BreakDistance)
 	{
 		UnlockTarget();
 		return;
 	}
 	newRotation.Pitch = UKismetMathLibrary::FClamp(newRotation.Pitch, maxPitch, newRotation.Pitch);
-	Controller->SetControlRotation(newRotation);
-	//UE_LOG(LogTemp, Warning, TEXT("TargetWeaknessActors num: %s"), *newRotation.ToString());
-	SpringArmComp->TargetOffset = FVector{0.0f, 0.0f, 100.0f};
-	// ... 
+	//Controller->SetControlRotation(newRotation);
+	//GetOwner()->SetActorRotation(newRotation);
+	
 }
 

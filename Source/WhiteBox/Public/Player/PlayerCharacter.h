@@ -18,6 +18,8 @@
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
 #include "Enum/EPlayerStates.h"
+#include "Enum/E_Gate.h"
+#include "Structure/FGateSetting.h"
 #include "PlayerCharacter.generated.h" 
 
 
@@ -47,6 +49,8 @@ public:
 	void OnBockingTagChange(const FGameplayTag Callbacktage, int32 NewCount);
 	void OnAimingTagChange(const FGameplayTag Callbacktage, int32 NewCount);
 	void OnDrawingTagChange(const FGameplayTag Callbacktage, int32 NewCount);
+	void OnParryingTagChange(const FGameplayTag Callbacktage, int32 NewCount);
+	void OnPoiseMaxTagChange(const FGameplayTag Callbacktage, int32 NewCount);
 	
 	UPROPERTY(BlueprintReadOnly)
 	class UPlayerAnimInstance* PlayerAnim;
@@ -90,11 +94,26 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	class UTalentComp* TalentComp;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UGameplayCameraComponent* GCC_Camera;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UStateTreeComponent* StateTreeComp;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	AActor* TargetActor;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TMap<TEnumAsByte<E_Gate>, FGateSetting> GateSettings;
+
+
 protected:
+	//void ActivateGameplayCamera();
+
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_PlayerState() override;
+
 
 public:	
 	// Called every frame
@@ -132,4 +151,6 @@ public:
 	void PlayerInteract();
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool isInbattle{false};
+	UFUNCTION(BlueprintCallable)
+	void UpdateGate(E_Gate GateType);
 };

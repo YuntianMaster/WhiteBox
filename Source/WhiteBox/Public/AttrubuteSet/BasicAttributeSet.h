@@ -46,11 +46,26 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
 	FGameplayAttributeData MaxShield;
 	ATTRIBUTE_ACCESSORS(UBasicAttributeSet, MaxShield);
+
+
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData PatrolSpeed;
+	ATTRIBUTE_ACCESSORS(UBasicAttributeSet, PatrolSpeed);
+
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData WalkSpeed;
+	ATTRIBUTE_ACCESSORS(UBasicAttributeSet, WalkSpeed);
 	
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData Poise;
+	ATTRIBUTE_ACCESSORS(UBasicAttributeSet, Poise);
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData MaxPoise;
+	ATTRIBUTE_ACCESSORS(UBasicAttributeSet, MaxPoise);
 
 protected:
 
-	
+	void OnPoiseGetMaxHandle(const FGameplayEffectModCallbackData& Data);
 public:
 
 	UBasicAttributeSet();
@@ -78,10 +93,18 @@ public:
 		GAMEPLAYATTRIBUTE_REPNOTIFY(UBasicAttributeSet, MaxStamina, OldValue);
 
 	}
+	void OnRep_Poise(const FGameplayAttributeData& OldValue)
+	{
+
+		GAMEPLAYATTRIBUTE_REPNOTIFY(UBasicAttributeSet, Poise, OldValue);
+
+	}
+
 
 	virtual void GetLifetimeReplicatedProps(TArray< class FLifetimeProperty >& OutLifetimeProps) const override;
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data)  override;
+	virtual void PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue) override;
 
 	
 };

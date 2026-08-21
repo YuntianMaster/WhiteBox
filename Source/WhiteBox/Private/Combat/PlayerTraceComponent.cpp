@@ -9,9 +9,13 @@
 #include "Combat/WeaponSystemComp.h"
 #include "Engine/DamageEvents.h"
 #include "Kismet/GameplayStatics.h"
+#include "Combat/Weapon/WeaponGeneral.h"
 #include "Enemy/DismembermentComponent.h"
 #include "Structure/FWeaponStruct.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "PhysicsEngine/PhysicsAsset.h"
+#include "GAS/GA/GA_WarpMontageAttack.h"
+#include "Structure/FGASStucts.h"
 #include "Kismet/KismetSystemLibrary.h"
 
 
@@ -50,7 +54,7 @@ void UPlayerTraceComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 		return;
 	}
 
-	if (!WeaponSystemComp->CurrentWeapon)
+	if (WeaponSystemComp->ECurrentWeapons == EWeapons::NoWeapon)
 	{
 		return;
 	}
@@ -60,47 +64,57 @@ void UPlayerTraceComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 		PrevSocketPairs.Empty();
 		return;
 	}
-	TArray<FHitResult> AllOutHits;
-	for (const FWeaponStruct& weapon : WeaponSystemComp->CurrentWeapon->Weapons) {
-		 
 
-		FVector StartSockerLocation{ weapon.WeaponComp->GetSocketLocation(weapon.TraceSockets.Start) };
-		FVector EndtSockerLocation{ weapon.WeaponComp->GetSocketLocation(weapon.TraceSockets.End) };
-		FRotator ShapeRotaion{ weapon.WeaponComp->GetSocketQuaternion(weapon.TraceSockets.Rotation) };
+
+	//UE_LOG(LogTemp, Warning, TEXT("Attacking!"));
+	TArray<AWeaponGeneral*> FCurrentWeapons = 
+		WeaponSystemComp->AllGaintedWeaponStructs[WeaponSystemComp->ECurrentWeapons];
+	//TArray<FHitResult> AllOutHits;
+	TMap<AActor*, FHitResult> AllOutHits;
+
+	TArray<AActor*> ActorsToIgnore = TargetsToIngore;
+	if (OwnRef)
+	{
+		ActorsToIgnore.AddUnique(OwnRef);
+	}
+
+	const FVector BoxHalfExtent = FVector(BoxCollisionLenght * 0.5f);
+	const ETraceTypeQuery TraceChannel = UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel1);
+	const EDrawDebugTrace::Type DebugTraceType = bDebugMode ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None;
+
+	for (AWeaponGeneral* weapon : FCurrentWeapons) {
+		if (!weapon || !weapon->WeaponMeshComp)
+		{
+			continue;
+		}
+
+		USkeletalMeshComponent* WeaponMesh = weapon->WeaponMeshComp;
+		const FTraceSockets& WeaponTraceSockets = weapon->WeaponStructData.TraceSockets;
+
+		FVector StartSockerLocation{ WeaponMesh->GetSocketLocation(WeaponTraceSockets.Start) };
+		FVector EndtSockerLocation{ WeaponMesh->GetSocketLocation(WeaponTraceSockets.End) };
+		FRotator ShapeRotaion{ WeaponMesh->GetSocketQuaternion(WeaponTraceSockets.Rotation) };
 
 		TArray<FHitResult> OutHits;
 		TArray<FHitResult> SweepOutHits;
-		FCollisionQueryParams IngoreParams{ FName{"Igorna"}, false, GetOwner() };
-
-		double WeaponDistance{
-			FVector::Distance(StartSockerLocation,EndtSockerLocation)
-		};
-		TArray<AActor*> ActorsToIgnore = TargetsToIngore;
-		if (OwnRef)
-		{
-			ActorsToIgnore.AddUnique(OwnRef);   
-		}
-		FVector BoxHalfExtent{ BoxCollisionLenght ,BoxCollisionLenght ,BoxCollisionLenght };
-		BoxHalfExtent /= 2;
-		FCollisionShape box{ FCollisionShape::MakeBox(BoxHalfExtent) };
-		bool bHasFoundTarget = UKismetSystemLibrary::BoxTraceMulti(
+		TArray<FHitResult> FinalSweeps;
+		UKismetSystemLibrary::BoxTraceMulti(
 			GetWorld(),
 			StartSockerLocation,
 			EndtSockerLocation,
 			BoxHalfExtent,
 			ShapeRotaion,
-			UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel1),
+			TraceChannel,
 			false,
 			ActorsToIgnore,
-			bDebugMode?EDrawDebugTrace::ForDuration:EDrawDebugTrace::None,
+			DebugTraceType,
 			OutHits,
 			true
-		
 		);
 
 
-		if (bEnableSweptTrace && weapon.WeaponComp) {
-			const uint32 Key = MakeTraceKey(weapon.WeaponComp, weapon.TraceSockets.Start, weapon.TraceSockets.End);
+		if (bEnableSweptTrace) {
+			const uint32 Key = MakeTraceKey(WeaponMesh, WeaponTraceSockets.Start, WeaponTraceSockets.End);
 			FPrevSocketPair& Prev = PrevSocketPairs.FindOrAdd(Key);
 			if (Prev.isVaild) {
 				const FVector PrevStart = Prev.Start;
@@ -135,42 +149,49 @@ void UPlayerTraceComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 						GetWorld(),
 						S0, S1,
 						Radius,
-						UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel1),
+						TraceChannel,
 						false,
 						ActorsToIgnore,
-						bDebugMode ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
+						DebugTraceType,
 						SweepOutHits,
 						true
 					);
 
+
+					FinalSweeps.Append(SweepOutHits);
 					UKismetSystemLibrary::SphereTraceMulti(
 						GetWorld(),
 						M0, M1,
 						Radius,
-						UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel1),
+						TraceChannel,
 						false,
 						ActorsToIgnore,
-						bDebugMode ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
+						DebugTraceType,
 						SweepOutHits,
 						true
 					);
-
+					FinalSweeps.Append(SweepOutHits);
 					UKismetSystemLibrary::SphereTraceMulti(
 						GetWorld(),
 						E0, E1,
 						Radius,
-						UEngineTypes::ConvertToTraceType(ECC_GameTraceChannel1),
+						TraceChannel,
 						false,
 						ActorsToIgnore,
-						bDebugMode ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
+						DebugTraceType,
 						SweepOutHits,
 						true
 					);
+					FinalSweeps.Append(SweepOutHits);
 				}
 					
-				for (const FHitResult& Hit : SweepOutHits) {
+				for (const FHitResult& Hit : FinalSweeps) {
 
-					AllOutHits.Add(Hit);
+					AActor* Actor = Hit.GetActor();
+					if (!Actor) continue;
+					if (!AllOutHits.Contains(Actor) || Hit.Distance < AllOutHits[Actor].Distance)
+						AllOutHits.Add(Actor, Hit);
+
 				}
 
 			}
@@ -181,64 +202,153 @@ void UPlayerTraceComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 		}
 
 
-		for (const FHitResult& Hit : OutHits) {
+		/*for (const FHitResult& Hit : OutHits) {
 
 			AllOutHits.Add(Hit);
-		}
+		}*/
 
 
 	};
 
 	
-
+	UE_LOG(LogTemp, Warning, TEXT("Montage ID: %i"), Trace_MontageInstanceID);
+	//UE_LOG(LogTemp, Warning, TEXT("AllOutHits: %i"), AllOutHits.Num());
+//	UE_LOG(LogTemp, Warning, TEXT("GA_WarpMontageAttack is : %s"), *GA_WarpMontageAttack->GetName());
 	if (AllOutHits.Num() == 0) return;
+	
+
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return;
+	}
 
 	float CharacterDamage{ 0.0f };
 	IFighter* FighterRef = GetOwner<IFighter>();
 	if(FighterRef)
 		CharacterDamage = FighterRef->GetDamage();
+	
+	const FGameplayTag EventAttackHit = FGameplayTag::RequestGameplayTag(FName("Event.Combat.HitSuccess"));
+	const FGameplayTag EventDefender = FGameplayTag::RequestGameplayTag(FName("Event.Combat.TakeHit"));
+	const FGameplayTag EventTraceHit = FGameplayTag::RequestGameplayTag(FName("Event.Combat.TraceHitSucess"));
 
 	FDamageEvent TargetAttackEvent;
-	for (const FHitResult& Hit : AllOutHits) {
-		AActor* TargetActor{ Hit.GetActor() };
-		 
-		if (TargetsToIngore.Contains(TargetActor)) continue;
+	for (const TPair<AActor*, FHitResult>& Pair : AllOutHits) {
+
+		AActor* TargetActor = Pair.Key;
+		const FHitResult& Hit = Pair.Value;
+
+		if (!IsValid(TargetActor))
+		{
+			continue;
+		}
+
+		FGameplayEventData Playload_TraceHit;
+		Playload_TraceHit.EventTag = EventTraceHit;
+		Playload_TraceHit.Instigator = OwnerActor;
+		Playload_TraceHit.Target = TargetActor;
+		FTraceMontageID* TraceMontageData = new FTraceMontageID();
+		TraceMontageData->TRACE_MONTAGE_ID = Trace_MontageInstanceID;
+		FGameplayAbilityTargetData_SingleTargetHit* const SingleTargetData = new FGameplayAbilityTargetData_SingleTargetHit();
+		SingleTargetData->HitResult = Hit;
+		Playload_TraceHit.TargetData.Add(TraceMontageData);
+		Playload_TraceHit.TargetData.Add(SingleTargetData);
+
+
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+			OwnerActor,
+			EventTraceHit,
+			Playload_TraceHit
+		);
+
+
+
+		//FGameplayEventData Playload_Hit;
+		//Playload_Hit.EventTag = EventAttackHit;
+		//Playload_Hit.Instigator = OwnerActor;
+		//Playload_Hit.Target = TargetActor;
+		//Playload_Hit.OptionalObject2 = OwnerActor;
+
+		//FGameplayAbilityTargetData_SingleTargetHit* const SingleTargetData = new FGameplayAbilityTargetData_SingleTargetHit();
+		//SingleTargetData->HitResult = Hit;
+	
+		//FGameplayAbilityTargetDataHandle TargetHandle;
+		//TargetHandle.Add(SingleTargetData);
+
+		//Playload_Hit.TargetData = TargetHandle;
+
+		//UE_LOG(LogTemp, Warning, TEXT("TargetActor: %s"), *TargetActor->GetName());
+		//UE_LOG(LogTemp, Warning, TEXT("Instigator: %s"), *OwnerActor->GetName());
+
+
+	
+
+		//UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+		//	OwnerActor,
+		//	EventAttackHit,
+		//	Playload_Hit);
+
+
+		//FGameplayEventData Playload_Defender;
+		//FGameplayAbilityTargetDataHandle DenfenderData;
+		//Playload_Defender.EventTag = EventDefender;
+		//Playload_Defender.Instigator = OwnerActor;
+		//Playload_Defender.Target = TargetActor;
+		//Playload_Defender.EventMagnitude = GA_WarpMontageAttack ? GA_WarpMontageAttack->DamageMagnitude : 0.0f;
+
+		//FGameplayAbilityTargetData_SingleTargetHit* const SingleDefendData = new FGameplayAbilityTargetData_SingleTargetHit();
+		//SingleDefendData->HitResult = Hit;
+		//DenfenderData.Add(SingleDefendData);
+		//Playload_Defender.TargetData = DenfenderData;
+
+		//UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+		//	TargetActor,
+		//	EventDefender,
+		//	Playload_Defender);
+
+
+		if (!IsValid(TargetActor) || TargetsToIngore.Contains(TargetActor)) continue;
 		TargetActor->TakeDamage(
 			CharacterDamage,
 			TargetAttackEvent,
-			GetOwner()->GetInstigatorController(),
-			GetOwner()
+			OwnerActor->GetInstigatorController(),
+			OwnerActor
 		);
 
 		UE_LOG(LogTemp, Warning, TEXT("ActorName: %s"), *TargetActor->GetName());
 		FVector ImpactLoc = Hit.ImpactPoint;
 		FName ImpactBone;
 		ACharacter* TargetCharacter = Cast<ACharacter>(TargetActor);
-		if (TargetCharacter)
+		USkeletalMeshComponent* TargetMesh = TargetCharacter ? TargetCharacter->GetMesh() : nullptr;
+		if (TargetMesh)
 		{
-			ImpactBone = TargetCharacter->GetMesh()->FindClosestBone(ImpactLoc);
+			ImpactBone = TargetMesh->FindClosestBone(ImpactLoc);
 			UE_LOG(LogTemp, Warning, TEXT("BoneName: %s"),*ImpactBone.ToString());
 		}
 		//UE_LOG(LogTemp,Warning,TEXT("%f"), CharacterDamage);
 		FRotator ImpactNor = UKismetMathLibrary::MakeRotFromZ(Hit.ImpactNormal);
-		UGameplayStatics::SpawnEmitterAtLocation(
-			GetWorld(),
-			bloodParticle,
-			Hit.ImpactPoint,
-			ImpactNor
-		);
+		if (bloodParticle)
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(
+				GetWorld(),
+				bloodParticle,
+				Hit.ImpactPoint,
+				ImpactNor
+			);
+		}
 		//DamageDismemberment 
 
-		if (!TargetActor->GetComponentByClass<UDismembermentComponent>())
+		UDismembermentComponent* DismemberComp = TargetActor->FindComponentByClass<UDismembermentComponent>();
+		if (!DismemberComp)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("No Disme:"));
 		}
 		else {
 			
-			FName DismemberBoneName = GetFirstAncestorBoneInPhysicsAsset(TargetActor->GetComponentByClass<USkeletalMeshComponent>(), ImpactBone);
+			FName DismemberBoneName = GetFirstAncestorBoneInPhysicsAsset(TargetMesh, ImpactBone);
 			if (!DismemberBoneName.IsNone())
 			{
-				TargetActor->GetComponentByClass<UDismembermentComponent>()->BodyTakeDamage(DismemberBoneName, CharacterDamage, Hit.ImpactNormal,Hit.ImpactPoint);
+				DismemberComp->BodyTakeDamage(DismemberBoneName, CharacterDamage, Hit.ImpactNormal, Hit.ImpactPoint);
 				UE_LOG(LogTemp, Warning, TEXT("Damage!!!!! %s"), *DismemberBoneName.ToString());
 			}
 		}

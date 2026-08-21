@@ -29,7 +29,8 @@ public:
 	class UCombatAttributeSet* CombatAttributeSet;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TArray<TSubclassOf<UGameplayAbility>> InitalAbilities;
-	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float DamageMagnitude = 10.f;
 
 protected:
 	// Called when the game starts or when spawned

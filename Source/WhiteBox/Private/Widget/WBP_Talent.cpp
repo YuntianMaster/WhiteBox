@@ -24,12 +24,12 @@ void UWBP_Talent::NativeConstruct() {
 }
 
 void UWBP_Talent::LevelUpTalent() {
-
+	//更新ASC技能
 	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetOwningPlayerPawn());
 	if (PlayerCharacter) {
 		PlayerCharacter->TalentComp->GetTalent(TalentData);
 	}
-
+	//更新UI
 	UpdateUI();
 
 }

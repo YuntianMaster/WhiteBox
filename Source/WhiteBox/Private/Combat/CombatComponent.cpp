@@ -70,76 +70,76 @@ void UCombatComponent::OnAttackPerformed()
 void UCombatComponent::ComboAttackHandle()
 {
 	
-	if (WeanponSystemRef->ECurrentWeapons == EWeapons::NoWeapon)
-	{	
-		return;
-	}
+	//if (WeanponSystemRef->ECurrentWeapons == EWeapons::NoWeapon)
+	//{	
+	//	return;
+	//}
 
-	if (!bCanComboInput) return;
-	bCanComboInput = false;
-	////Combo Group
-	int ComboGroupIndex = WeanponSystemRef->CurrentWeapon->ComboGroupIndex;
-	TArray<FComboAttackMontages> ComboAttackMontages =  WeanponSystemRef->CurrentWeapon->ComboAttackMontages;
-	if (ComboAttackMontages.Num() == 0)
-		return;
-	////Montage Play
-	float AttackPlayDuration = WeanponSystemRef->CurrentWeapon->WeaponAttack(ComboAttackMontages[ComboGroupIndex].CombAttackMontages[CombotCounter]);
-	float InputTiming = 0.0f;
-	float InputPassTiming = 0.0f;
+	//if (!bCanComboInput) return;
+	//bCanComboInput = false;
+	//////Combo Group
+	//int ComboGroupIndex = WeanponSystemRef->CurrentWeapon->ComboGroupIndex;
+	//TArray<FComboAttackMontages> ComboAttackMontages =  WeanponSystemRef->CurrentWeapon->ComboAttackMontages;
+	//if (ComboAttackMontages.Num() == 0)
+	//	return;
+	//////Montage Play
+	//float AttackPlayDuration = WeanponSystemRef->CurrentWeapon->WeaponAttack(ComboAttackMontages[ComboGroupIndex].CombAttackMontages[CombotCounter]);
+	//float InputTiming = 0.0f;
+	//float InputPassTiming = 0.0f;
 
-	//WarpMotion
-	ULockComponent* LockComp = CharacterRef->GetComponentByClass<ULockComponent>();
-	if (LockComp->CurrentTargetActor)
-	{
-		FVector start = GetOwner()->GetActorLocation();
-		FVector Target = LockComp->CurrentTargetActor->GetActorLocation();
-		FVector Distance = Target - start;
-		Distance = Distance.GetSafeNormal();
-		FVector WarpTarget = Target - Distance * TargetOffset;
-		float dis = FVector::Distance(start, Target);
-		UMotionWarpingComponent* MotionWarpComp = GetOwner()->GetComponentByClass<UMotionWarpingComponent>();
-		if (dis < MotionWarpDistance)
-		{
-			//UE_LOG(LogTemp, Warning, TEXT("Distance: %f"), dis);
-			MotionWarpComp->AddOrUpdateWarpTargetFromLocation("Attack", WarpTarget);
-		}
+	////WarpMotion
+	//ULockComponent* LockComp = CharacterRef->GetComponentByClass<ULockComponent>();
+	//if (LockComp->CurrentTargetActor)
+	//{
+	//	FVector start = GetOwner()->GetActorLocation();
+	//	FVector Target = LockComp->CurrentTargetActor->GetActorLocation();
+	//	FVector Distance = Target - start;
+	//	Distance = Distance.GetSafeNormal();
+	//	FVector WarpTarget = Target - Distance * TargetOffset;
+	//	float dis = FVector::Distance(start, Target);
+	//	UMotionWarpingComponent* MotionWarpComp = GetOwner()->GetComponentByClass<UMotionWarpingComponent>();
+	//	if (dis < MotionWarpDistance)
+	//	{
+	//		//UE_LOG(LogTemp, Warning, TEXT("Distance: %f"), dis);
+	//		MotionWarpComp->AddOrUpdateWarpTargetFromLocation("Attack", WarpTarget);
+	//	}
 
-		else
-		{
-			MotionWarpComp->RemoveWarpTarget("Attack");
+	//	else
+	//	{
+	//		MotionWarpComp->RemoveWarpTarget("Attack");
 
-		}
-	}
+	//	}
+	//}
 
 
 
-	//InputTimeing
-	InputTiming = AttackPlayDuration * (1 - attackTimingPercent);
-	//LockActionRef->LockInputMovement("ComboAttack");
-	InputPassTiming = AttackPlayDuration + attackBufferTime;
-	CombotCounter++;
-	int CounterMax{ ComboAttackMontages[ComboGroupIndex].CombAttackMontages.Num()};
-	CombotCounter = UKismetMathLibrary::Wrap(CombotCounter, -1, CounterMax - 1);
-	////Stop input
-	
-	
-	//combo input timing
-	GetWorld()->GetTimerManager().ClearTimer(FCombotInputHandle);
-	GetWorld()->GetTimerManager().ClearTimer(FCombotInputPassHandle);
-	GetWorld()->GetTimerManager().SetTimer(
-		FCombotInputHandle,
-		this,
-		&UCombatComponent::ComboInputHandle,
-		InputTiming,
-		false
-	);
-	GetWorld()->GetTimerManager().SetTimer(
-		FCombotInputPassHandle,
-		this,
-		&UCombatComponent::ComboInputPassHandle,
-		InputPassTiming,
-		false
-	);
+	////InputTimeing
+	//InputTiming = AttackPlayDuration * (1 - attackTimingPercent);
+	////LockActionRef->LockInputMovement("ComboAttack");
+	//InputPassTiming = AttackPlayDuration + attackBufferTime;
+	//CombotCounter++;
+	//int CounterMax{ ComboAttackMontages[ComboGroupIndex].CombAttackMontages.Num()};
+	//CombotCounter = UKismetMathLibrary::Wrap(CombotCounter, -1, CounterMax - 1);
+	//////Stop input
+	//
+	//
+	////combo input timing
+	//GetWorld()->GetTimerManager().ClearTimer(FCombotInputHandle);
+	//GetWorld()->GetTimerManager().ClearTimer(FCombotInputPassHandle);
+	//GetWorld()->GetTimerManager().SetTimer(
+	//	FCombotInputHandle,
+	//	this,
+	//	&UCombatComponent::ComboInputHandle,
+	//	InputTiming,
+	//	false
+	//);
+	//GetWorld()->GetTimerManager().SetTimer(
+	//	FCombotInputPassHandle,
+	//	this,
+	//	&UCombatComponent::ComboInputPassHandle,
+	//	InputPassTiming,
+	//	false
+	//);
 }
 
 void UCombatComponent::ChangeToTravelMode()
@@ -150,7 +150,7 @@ void UCombatComponent::ChangeToTravelMode()
 void UCombatComponent::BlockAttackHandle()
 {
 	if (WeanponSystemRef->ECurrentWeapons == EWeapons::NoWeapon) return;
-	WeanponSystemRef->CurrentWeapon->BlockFuction();
+	//WeanponSystemRef->CurrentWeapon->BlockFuction();
 	//CharacterRef->PlayAnimMontage(WeanponSystemRef->CurrentWeapon->BlockMontage);
 	//AnimInstance->bIsBowAiming = true;
 }
@@ -158,7 +158,7 @@ void UCombatComponent::BlockAttackHandle()
 void UCombatComponent::CancelBlockAttackHandle()
 {
 	if (WeanponSystemRef->ECurrentWeapons == EWeapons::NoWeapon) return;
-	WeanponSystemRef->CurrentWeapon->CancelBlockFuction();
+	/*WeanponSystemRef->CurrentWeapon->CancelBlockFuction();*/
 	//AnimInstance->bIsBowAiming = false;
 }
 
@@ -166,18 +166,18 @@ void UCombatComponent::CombatThrow()
 {
 	if (WeanponSystemRef->ECurrentThrowWeapons == EWeapons::NoWeapon) return;
 
-	TArray<FComboAttackMontages> ComboAttackMontages = WeanponSystemRef->CurrentThrowWeapon->ComboAttackMontages;
-	WeanponSystemRef->CurrentThrowWeapon->WeaponAttack(ComboAttackMontages[0].CombAttackMontages[0]);
+	//TArray<FComboAttackMontages> ComboAttackMontages = WeanponSystemRef->CurrentThrowWeapon->ComboAttackMontages;
+	//WeanponSystemRef->CurrentThrowWeapon->WeaponAttack(ComboAttackMontages[0].CombAttackMontages[0]);
 }
 
 void UCombatComponent::DefenseAttackHandle()
 {
-	CharacterRef->PlayAnimMontage(WeanponSystemRef->CurrentWeapon->DenfenseAttack);
+	/*CharacterRef->PlayAnimMontage(WeanponSystemRef->CurrentWeapon->DenfenseAttack);*/
 }
 
 void UCombatComponent::RollingAttackHandle()
 {
-	CharacterRef->PlayAnimMontage(WeanponSystemRef->CurrentWeapon->RollingAttack, 1, "ROLLATTACK");
+	/*CharacterRef->PlayAnimMontage(WeanponSystemRef->CurrentWeapon->RollingAttack, 1, "ROLLATTACK");*/
 }
 
 void UCombatComponent::AttackFunction()

@@ -18,33 +18,36 @@ UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class WHITEBOX_API ULockComponent : public UActorComponent
 {
 	GENERATED_BODY()
-	ACharacter* OwnRef;
-	APlayerController* Controller;
-	class UCharacterMovementComponent* MovementComp;
-	class USpringArmComponent* SpringArmComp;
+
 
 public:	
 	// Sets default values for this component's properties
 	ULockComponent();
 	UPROPERTY(BlueprintAssignable)
 	FOnUpdatedTargetSignature OnUpdateTargetDelegate;
+	class UCamerManagerComponent* CamerManagerComp;
+	class APlayerCharacter* OwnRef;
+	APlayerController* Controller;
+	class UCharacterMovementComponent* MovementComp;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float Radiu = 750.0f;
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
 	UFUNCTION(BlueprintCallable)
-	void OnlockStart(float Radiu = 750.0f );
+	void OnlockStart();
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float BreakDistance{ 1000.0f };
 	
 
 	UFUNCTION(BlueprintCallable)
-	void ToggleLockOn(float Radiu = 750.0f);
+	void ToggleLockOn();
 
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
+	UPROPERTY()
 	AActor* CurrentTargetActor;
 	UFUNCTION(BlueprintCallable)
 	void UnlockTarget();

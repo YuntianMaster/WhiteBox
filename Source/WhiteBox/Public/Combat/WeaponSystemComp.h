@@ -10,6 +10,10 @@
 #include "WeaponSystemComp.generated.h"
 
 
+
+
+
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class WHITEBOX_API UWeaponSystemComp : public UActorComponent
 {
@@ -20,6 +24,28 @@ public:
 	UWeaponSystemComp();
 	ACharacter* charRef;
 
+	FOnMontageEnded FUnArmDelegate;
+	FOnMontageEnded FEquipedDelegate;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapons")
+	TEnumAsByte<EWeapons> ECurrentWeapons;
+	TEnumAsByte<EWeapons> EChangeWeapon;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapons")
+	TEnumAsByte<EWeapons> EUnarmedWeapon;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapons/ThrowWeapon")
+	AWeaponGeneral* CurrentThrowWeapon;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapons/ThrowWeapon")
+	TEnumAsByte<EWeapons> ECurrentThrowWeapons;
+	TMap<TEnumAsByte<EWeapons>, TArray<AWeaponGeneral*>> AllGaintedWeaponStructs;
+	TMap<TEnumAsByte<EWeapons>, UAnimMontage*> WeaponEquipedAnims;
+	TMap<TEnumAsByte<EWeapons>, UAnimMontage*> WeaponUnarmAnims;
+	UAbilitySystemComponent* Abilitycomp;
+	TArray<FGameplayAbilitySpecHandle> WeaponAbility;
+
+
+	bool bIsChangingWeapon{ false };
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -27,57 +53,33 @@ protected:
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	
 	UFUNCTION(BlueprintCallable)
-	void ChangeWeapon(TSubclassOf<AWeaponGeneral>  WeaponClass);
+	void GetWeaponHandle(class UPDA_Weapon* WeaponData);
 	UFUNCTION(BlueprintCallable)
-	void GetWeapon(TSubclassOf<AWeaponGeneral>  TargetWeapon);
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapons")
-	TArray<AWeaponGeneral*> WeaponList;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapons")
-	TMap<TEnumAsByte<EWeapons>, TSubclassOf <AWeaponGeneral>> WeaponLibrary;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapons")
-	AWeaponGeneral* CurrentWeapon;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapons")
-	AWeaponGeneral* NeedChangeWeapon;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapons")
-	TEnumAsByte<EWeapons> ECurrentWeapons;
+	void SwitchWeapon(EWeapons WeaponName);
+	void EquipWeaponByEWeapon(EWeapons WeaponName);
+	void UArmWeaponByEWeapon(EWeapons WeaponName);
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapons/ThrowWeapon")
-	AWeaponGeneral* CurrentThrowWeapon;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapons/ThrowWeapon")
-	TEnumAsByte<EWeapons> ECurrentThrowWeapons;
+	void EquipWeaponToSocketByEWeapon(EWeapons WeaponName);
+	void UnArmWeaponToSocketByEWeapon(EWeapons WeaponName);
+	void SetActorToSocket(AActor* Actor, FName SocketName);
 
 	
 	UFUNCTION(BlueprintCallable)
-	//void SetWeaponToSocket(AWeaponGeneral* Weanponclass, FName SocketName);
-	void SetWeaponToSocket(USkeletalMeshComponent* Mesh, FName SocketName);
+	void ArmmedWeaponToSocket(EWeapons WeaponName);
 	UFUNCTION(BlueprintCallable)
-	void ArmmedWeaponToSocket(AWeaponGeneral* Weanpon);
-	UFUNCTION(BlueprintCallable)
-	void UnArmmedWeaponToSocket(AWeaponGeneral* Weanpon);
+	void UnArmmedWeaponToSocket(EWeapons WeaponName);
 	class UPlayerAnimInstance* AnimInstance;
-	UFUNCTION()
-	void EquipCurrentWeapon(AWeaponGeneral* TargetWeapon);
-	FOnMontageEnded FChangeWeaponDelegate;
-	UFUNCTION()
-	void UnArmCurrentWeapon();
-	class UCombatComponent* CombatRef;
-	
-
-	FOnMontageEnded FUnArmDelegate;
-	FOnMontageEnded FArmDelegate;
-
-	UFUNCTION(BlueprintCallable)
-	void GetThrowWeapons(TSubclassOf<AWeaponGeneral>  TargetWeapon);
-
-
+	//FOnMontageEnded FChangeWeaponDelegate;
+	//FOnMontageEnded FArmDelegate;
 	UFUNCTION(BlueprintCallable)
 	void ThrowWeapon();
-	
-	UAbilitySystemComponent* Abilitycomp;
-	TArray<FGameplayAbilitySpecHandle> WeaponAbility;
-	void GiveWeaponAbilities(AWeaponGeneral* TargetWeapon);
-	void RemoveWeaponAbilities(AWeaponGeneral* TargetWeapon);
+	void GiveWeaponAbilitiesByWeaponStruct(FWeaponStruct Weapon);
+	void RemoveWeaponAbilitiesByWeaponStruct(FWeaponStruct Weapon);
+
+	UFUNCTION(BlueprintCallable)
+	TArray<AWeaponGeneral*> GetWeaponByEWeapon(EWeapons WeaponName);
 
 };
 

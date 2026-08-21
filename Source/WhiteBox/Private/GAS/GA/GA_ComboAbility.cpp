@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "HAL/PlatformTime.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "MotionWarpingComponent.h"
 
 UGA_ComboAbility::UGA_ComboAbility()
@@ -55,6 +56,10 @@ void UGA_ComboAbility::GA_ComboAttackHandle()
 		{
 			//UE_LOG(LogTemp, Warning, TEXT("Distance: %f"), dis);
 			MotionWarpComp->AddOrUpdateWarpTargetFromLocation("Attack", WarpTarget);
+
+			UKismetSystemLibrary::DrawDebugCircle(
+				GetWorld(), 
+				WarpTarget, 50.f, 32, FLinearColor::Red, 2.f, 0.5f, FVector(1.f, 0.f, 0.f), FVector(0.f, 1.f, 0.f), false);
 		}
 
 		else

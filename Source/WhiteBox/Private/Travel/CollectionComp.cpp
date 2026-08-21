@@ -10,7 +10,7 @@ UCollectionComp::UCollectionComp()
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
 
-	// ...
+	// ...d
 }
 
 
@@ -36,4 +36,6 @@ void UCollectionComp::PlayerInteract()
 {
 	OnPlayerInteractDelegate.Broadcast();
 }
+
+
 

@@ -12,11 +12,7 @@
 void UGA_RollAbility::GA_Roll()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Rolling"));
-	//ActivationBlockedTags.AddTag(FGameplayTag::RequestGameplayTag("Stats.Rolling"));
-	//RollingSpecHandle = MakeOutgoingGameplayEffectSpec(GE_Rolling, 1.0f);
-	//RollingHandle = K2_ApplyGameplayEffectSpecToOwner(RollingSpecHandle);
 	CharacterRef = Cast<ACharacter>(GetAvatarActorFromActorInfo());
-	UMotionWarpingComponent* MotionWarpingComp = GetAvatarActorFromActorInfo()->GetComponentByClass<UMotionWarpingComponent>();
 	FVector RollDirection{
 		
 		CharacterRef->GetCharacterMovement()->Velocity.Length() < 1.f ?
@@ -28,7 +24,7 @@ void UGA_RollAbility::GA_Roll()
 
 	const float DeltaSigned = FMath::FindDeltaAngleDegrees(ActorYaw, InputYaw); // -180~180
 	const float Angle360 = FRotator::ClampAxis(DeltaSigned);                     // 0~360
-	UE_LOG(LogTemp, Warning, TEXT("last input yaw,%f"), Angle360);
+	/*UE_LOG(LogTemp, Warning, TEXT("last input yaw,%f"), Angle360);*/
 
 	
 	
@@ -36,14 +32,20 @@ void UGA_RollAbility::GA_Roll()
 	//UE_LOG(LogTemp, Warning, TEXT("yaw::%f"), RotatYaw);
 	int CounterMax = Roll_F.Num();
 	RollIndex = UKismetMathLibrary::Wrap(RollIndex, -1, CounterMax - 1);
-	UE_LOG(LogTemp, Warning, TEXT("last input,%s"), *RollDirection.ToString());
-	UE_LOG(LogTemp, Warning, TEXT("last input length,%f"), RollDirection.Length());
+	/*UE_LOG(LogTemp, Warning, TEXT("last input,%s"), *RollDirection.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("last input length,%f"), RollDirection.Length());*/
 	float Duration = 0;
 	UAbilityTask_PlayMontageAndWait* RollMontage = nullptr;
 
 	//  不同角度播放不同翻滚动画
-	if (Angle360 < 60)
+	if (Angle360 < 30)
 	{
+		if (EROLLDir != ERollDirection::F)
+		{
+			RollIndex = 0;
+			CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
+		}
+		EROLLDir = ERollDirection::F;
 		Duration = Roll_F[RollIndex]->GetPlayLength();
 		UE_LOG(LogTemp, Warning, TEXT("During,%f"), Duration);
 		RollMontage = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
@@ -55,22 +57,52 @@ void UGA_RollAbility::GA_Roll()
 			true,
 			1,
 			0,
-			false
-		);
-		MotionWarpingComp->AddOrUpdateWarpTargetFromLocation(
-			"Roll",
-			CharacterRef->GetActorLocation() +
-			RollDirection * 350
-		);
+			false);
+
 
 
 		
 	}
 
+	else if(Angle360 < 60)
+	{
+		if (EROLLDir != ERollDirection::FR)
+		{
+			CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
+			RollIndex = 0;
+			CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90 + Angle360, 0));
+		}
+		EROLLDir = ERollDirection::FR;
+		
+		Duration = Roll_R[RollIndex]->GetPlayLength();
+		
+		RollMontage = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+			this,
+			"Rolling",
+			Roll_F[RollIndex],
+			1,
+			NAME_None,
+			true,
+			1,
+			0,
+			false
+		);
+		
+	}
+
+
 	else if (Angle360 < 120)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("During,%f"), Duration);
 		Duration = Roll_R[RollIndex]->GetPlayLength();
+		UE_LOG(LogTemp, Warning, TEXT("R,%f"), Duration);
+		if (EROLLDir != ERollDirection::R)
+		{
+			RollIndex = 0;
+			CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
+		}
+		EROLLDir = ERollDirection::R;
+		
+		
 		RollMontage = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 			this,
 			"Rolling",
@@ -84,8 +116,71 @@ void UGA_RollAbility::GA_Roll()
 		);
 		
 	}
+
+
+	else if (Angle360 < 150)
+	{
+		if (EROLLDir != ERollDirection::BR)
+		{
+			RollIndex = 0;
+			CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
+			CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90 + Angle360 + 180, 0));
+		}
+		EROLLDir = ERollDirection::BR;
+		UE_LOG(LogTemp, Warning, TEXT("During,%f"), Duration);
+		Duration = Roll_B[RollIndex]->GetPlayLength();
+
+	
+		
+		
+		RollMontage = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+			this,
+			"Rolling",
+			Roll_B[RollIndex],
+			1,
+			NAME_None,
+			true,
+			1,
+			0,
+			false
+		);
+
+		
+
+	}
+
+	else if (Angle360 < 210) {
+		if (EROLLDir != ERollDirection::B)
+		{
+			RollIndex = 0;
+			CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
+		}
+		EROLLDir = ERollDirection::B;
+		UE_LOG(LogTemp, Warning, TEXT("During,%f"), Duration);
+		Duration = Roll_R[RollIndex]->GetPlayLength();
+		RollMontage = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+			this,
+			"Rolling",
+			Roll_B[RollIndex],
+			1,
+			NAME_None,
+			true,
+			1,
+			0,
+			false
+		);
+
+	}
+
 	else if (Angle360 < 240)
 	{
+		if (EROLLDir != ERollDirection::BL)
+		{
+			RollIndex = 0;
+			CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
+			CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90 + Angle360 + 180, 0));
+		}
+		EROLLDir = ERollDirection::BL;
 		UE_LOG(LogTemp, Warning, TEXT("During,%f"), Duration);
 		Duration = Roll_B[RollIndex]->GetPlayLength();
 		RollMontage = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
@@ -99,14 +194,17 @@ void UGA_RollAbility::GA_Roll()
 			0,
 			false
 		);
-		MotionWarpingComp->AddOrUpdateWarpTargetFromLocation(
-			"Roll",
-			CharacterRef->GetActorLocation() + RollDirection * 350
-		);
+	
 
 	}
 	else if (Angle360 < 300)
 	{
+		if (EROLLDir != ERollDirection::L)
+		{
+			CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
+			RollIndex = 0;
+		}
+		EROLLDir = ERollDirection::L;
 		UE_LOG(LogTemp, Warning, TEXT("During,%f"), Duration);
 		Duration = Roll_L[RollIndex]->GetPlayLength();
 		RollMontage = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
@@ -120,13 +218,16 @@ void UGA_RollAbility::GA_Roll()
 			0,
 			false
 		);
-		MotionWarpingComp->AddOrUpdateWarpTargetFromLocation(
-			"Roll",
-			CharacterRef->GetActorLocation() +
-			RollDirection * 350
-		);
+	
 	}
-	else {
+	else if(Angle360 < 330){
+		if (EROLLDir != ERollDirection::FL)
+		{
+			CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
+			RollIndex = 0;
+			CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90 + Angle360, 0));
+		}
+		EROLLDir = ERollDirection::FL;
 		UE_LOG(LogTemp, Warning, TEXT("During,%f"), Duration);
 		Duration = Roll_F[RollIndex]->GetPlayLength();
 		RollMontage = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
@@ -141,16 +242,16 @@ void UGA_RollAbility::GA_Roll()
 			false
 		);
 
-		MotionWarpingComp->AddOrUpdateWarpTargetFromLocation(
-			"Roll",
-			CharacterRef->GetActorLocation() +
-			RollDirection * 350
-		);
 	}
-
+	
+	UE_LOG(LogTemp, Warning, TEXT("EROLLDir, %d"), static_cast<int>(EROLLDir));
 	if (RollMontage)
 	{
+		RollMontage->OnCompleted.AddDynamic(this, &UGA_RollAbility::ResetMeshDirection);
 		RollMontage->ReadyForActivation();
+	/*	RollMontage->OnBlendOut.AddDynamic(this, &UGA_RollAbility::ResetMeshDirection);
+		RollMontage->OnCancelled.AddDynamic(this, &UGA_RollAbility::ResetMeshDirection);
+		RollMontage->OnCompleted.AddDynamic(this, &UGA_RollAbility::ResetMeshDirection);*/
 	}
 	else
 	{
@@ -169,7 +270,7 @@ void UGA_RollAbility::GA_Roll()
 		RollFinishTimeHandler,
 		this,
 		&UGA_RollAbility::GA_RollEnd,
-		Duration + 0.3f,
+		Duration + 0.5f,
 		false
 	);
 
@@ -188,4 +289,12 @@ void UGA_RollAbility::GA_RollEnd()
 	RollIndex = 0;
 	UE_LOG(LogTemp, Warning, TEXT("Roll End tag: %s"), *BlockAbilitiesWithTag.First().ToString());
 	EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
+}
+
+void UGA_RollAbility::ResetMeshDirection()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Roll Reset Mesh."));
+	CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
+	EROLLDir = ERollDirection::NOINPUT;
+
 }

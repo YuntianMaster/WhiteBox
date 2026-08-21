@@ -6,6 +6,11 @@
 #include "Widget/SkillWidget.h"
 #include "Widget/PlayerMainWidget.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Enemy/EnemyCharacter.h"
+#include "Enemy/EnemyAIController.h"
+#include "EnvironmentQuery/EnvQuery.h"
+#include "EnvironmentQuery/EnvQueryManager.h"
+#include "AbilitySystemGlobals.h"
 #include "AbilitySystemComponent.h"
 
 UGA_GameAblilityBase::UGA_GameAblilityBase()
@@ -31,7 +36,7 @@ void UGA_GameAblilityBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorI
 	}
 
 	if (bAutoActive)
-	{
+	{ 
 		UAbilitySystemComponent* ASCForActivate = nullptr;
 		ASCForActivate = ActorInfo->AbilitySystemComponent.Get();
 		
@@ -51,37 +56,170 @@ void UGA_GameAblilityBase::OnAvatarSet(const FGameplayAbilityActorInfo* ActorInf
 
 }
 
+bool UGA_GameAblilityBase::DoesAbilitySatisfyTagRequirements(
+	const UAbilitySystemComponent& AbilitySystemComponent,
+	const FGameplayTagContainer* SourceTags,
+	const FGameplayTagContainer* TargetTags,
+	FGameplayTagContainer* OptionalRelevantTags) const
+{
+	// UE 5.5 �޸�������ȷ����Ĳ㼶ƥ���� Block
+	if (AbilitySystemComponent.AreAbilityTagsBlocked(GetAssetTags()))
+	{
+		if (OptionalRelevantTags)
+		{
+			OptionalRelevantTags->AddTag(
+				UAbilitySystemGlobals::Get().ActivateFailTagsBlockedTag);
+		}
+		return false;
+	}
+	return Super::DoesAbilitySatisfyTagRequirements(
+		AbilitySystemComponent, SourceTags, TargetTags, OptionalRelevantTags);
+}
+
+
 
 void UGA_GameAblilityBase::TryCacheCharacterRefs(const FGameplayAbilityActorInfo* ActorInfo)
 {
 	CharRef = nullptr;
 	AnimInstance = nullptr;
+	EnemyCharRef = nullptr;
 
-	if (ActorInfo)
+	if(!bIsEnemyAbility)
 	{
-		CharRef = Cast<APlayerCharacter>(ActorInfo->AvatarActor.Get());
+		if (ActorInfo)
+		{
+			CharRef = Cast<APlayerCharacter>(ActorInfo->AvatarActor.Get());
+			if (!CharRef)
+			{
+				CharRef = Cast<APlayerCharacter>(ActorInfo->OwnerActor.Get());
+			}
+		}
 		if (!CharRef)
 		{
-			CharRef = Cast<APlayerCharacter>(ActorInfo->OwnerActor.Get());
+			CharRef = Cast<APlayerCharacter>(GetAvatarActorFromActorInfo());
 		}
-	}
-	if (!CharRef)
-	{
-		CharRef = Cast<APlayerCharacter>(GetAvatarActorFromActorInfo());
-	}
-	if (!CharRef)
-	{
-		CharRef = Cast<APlayerCharacter>(GetOwningActorFromActorInfo());
+		if (!CharRef)
+		{
+			CharRef = Cast<APlayerCharacter>(GetOwningActorFromActorInfo());
+		}
+
+		if (!CharRef)
+		{
+			return;
+		}
+
+
+
+		AnimInstance = CharRef->GetMesh() ? CharRef->GetMesh()->GetAnimInstance() : nullptr;
 	}
 
-	if (!CharRef)
+	else
 	{
+		if (ActorInfo)
+		{
+			EnemyCharRef = Cast<AEnemyCharacter>(ActorInfo->AvatarActor.Get());
+			if (!EnemyCharRef)
+			{
+				EnemyCharRef = Cast<AEnemyCharacter>(ActorInfo->OwnerActor.Get());
+			}
+		}
+		if (!EnemyCharRef)
+		{
+			EnemyCharRef = Cast<AEnemyCharacter>(GetAvatarActorFromActorInfo());
+		}
+		if (!EnemyCharRef)
+		{
+			EnemyCharRef = Cast<AEnemyCharacter>(GetOwningActorFromActorInfo());
+		}
+
+		if (!EnemyCharRef)
+		{
+			return;
+		}
+		EnemyAnimInstance = EnemyCharRef->GetMesh() ? EnemyCharRef->GetMesh()->GetAnimInstance() : nullptr;
+		EnemyAIRef = Cast<AEnemyAIController>(EnemyCharRef->GetController());
+	}
+}
+
+void UGA_GameAblilityBase::RunCoverEQS()
+{
+	EQSQueryLocation = FVector::ZeroVector;
+
+	if (!QueryTemplate)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("RunCoverEQS: QueryTemplate is null"));
+		OnCoverEQSFailed();
 		return;
 	}
 
-	
-
-	AnimInstance = CharRef->GetMesh() ? CharRef->GetMesh()->GetAnimInstance() : nullptr;
+	FEnvQueryRequest QueryRequest(QueryTemplate, GetAvatarActorFromActorInfo());
+	QueryRequest.Execute(
+		EEnvQueryRunMode::SingleResult,
+		FQueryFinishedSignature::CreateUObject(this, &UGA_GameAblilityBase::OnEQSFinished)
+	);
 }
+
+void UGA_GameAblilityBase::OnEQSFinished(TSharedPtr<FEnvQueryResult> Result)
+{
+	if (!Result.IsValid() || !Result->IsSuccessful())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("EQS failed"));
+		OnCoverEQSFailed();
+		return;
+	}
+
+	TArray<FVector> Locations;
+	Result->GetAllAsLocations(Locations);
+	if (!Locations.IsValidIndex(0))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("EQS returned no locations"));
+		OnCoverEQSFailed();
+		return;
+	}
+
+	EQSQueryLocation = Locations[0];
+	//UE_LOG(LogTemp, Warning, TEXT("EQSQueryLocation: %s"), *EQSQueryLocation.ToString());
+	OnCoverEQSFinished(EQSQueryLocation);
+}
+
+void UGA_GameAblilityBase::ApplyGEToSelf(FGameplayTag DataTag)
+{
+	UAbilitySystemComponent* OwnerASC = GetAvatarActorFromActorInfo()->GetComponentByClass<UAbilitySystemComponent>();	
+	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
+	Context.AddSourceObject(GetAvatarActorFromActorInfo());
+
+	FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(GE_Self, GE_Self_Lv, Context);
+	if (!SpecHandle.IsValid()) {
+		UE_LOG(LogTemp, Warning, TEXT("SpecHandle is not working"));
+		return;
+	}
+	SpecHandle.Data->SetByCallerTagMagnitudes.Add(DataTag, GE_Self_Magnitude);
+	OwnerASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), OwnerASC);
+
+}
+
+void UGA_GameAblilityBase::ApplyGEToAttacker(FGameplayEventData Playload, FGameplayTag DataTag)
+{
+	UAbilitySystemComponent* OwnerASC = GetAvatarActorFromActorInfo()->GetComponentByClass<UAbilitySystemComponent>();
+	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
+	Context.AddSourceObject(GetAvatarActorFromActorInfo());
+
+	FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(GE_ToAttacker, GE_ToAttacker_Lv, Context);
+	if (!SpecHandle.IsValid()) {
+		UE_LOG(LogTemp, Warning, TEXT("SpecHandle is not working"));
+		return;
+	}
+	SpecHandle.Data->SetByCallerTagMagnitudes.Add(DataTag, GE_ToAttacker_Magnitude);
+
+	const AActor* Attacker = Playload.Instigator.Get();
+	UAbilitySystemComponent* AttackerASC = Attacker->GetComponentByClass<UAbilitySystemComponent>();
+
+	if(AttackerASC)
+		OwnerASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), AttackerASC);
+	else
+		UE_LOG(LogTemp, Warning, TEXT("Attack ASC is not working"));
+}
+
+
 
 

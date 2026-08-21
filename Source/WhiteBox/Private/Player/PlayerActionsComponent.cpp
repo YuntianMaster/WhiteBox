@@ -104,96 +104,96 @@ void UPlayerActionsComponent::GoWalk()
 void UPlayerActionsComponent::Roll()
 {
 
-	if (!CharacterRef->Implements<UMainPlayerInterface>()) return;
-	IMainPlayerInterface* PlayerRef{ Cast<IMainPlayerInterface>(CharacterRef) };
-	if (!PlayerRef->HasEnoughStamina(RollStamniaCost)) return;
-	OnSprintDelegate.Broadcast(RollStamniaCost);
-	if (bIsRollActive) return;
-	bIsRollActive = true;
-	Cast<APlayerCharacter>(CharacterRef)->PlayerStats = EPlayerStates::Rolling;
-	FVector RollDirection{
-		CharacterRef->GetCharacterMovement()->Velocity.Length() < 1.f ?
-			CharacterRef->GetActorForwardVector() :
-			CharacterRef->GetLastMovementInputVector().GetSafeNormal()
-	};
-	const float ActorYaw = CharacterRef->GetActorForwardVector().Rotation().Yaw;
-	const float InputYaw = RollDirection.GetSafeNormal2D().Rotation().Yaw;
+	//if (!CharacterRef->Implements<UMainPlayerInterface>()) return;
+	//IMainPlayerInterface* PlayerRef{ Cast<IMainPlayerInterface>(CharacterRef) };
+	//if (!PlayerRef->HasEnoughStamina(RollStamniaCost)) return;
+	//OnSprintDelegate.Broadcast(RollStamniaCost);
+	//if (bIsRollActive) return;
+	//bIsRollActive = true;
+	//Cast<APlayerCharacter>(CharacterRef)->PlayerStats = EPlayerStates::Rolling;
+	//FVector RollDirection{
+	//	CharacterRef->GetCharacterMovement()->Velocity.Length() < 1.f ?
+	//		CharacterRef->GetActorForwardVector() :
+	//		CharacterRef->GetLastMovementInputVector().GetSafeNormal()
+	//};
+	//const float ActorYaw = CharacterRef->GetActorForwardVector().Rotation().Yaw;
+	//const float InputYaw = RollDirection.GetSafeNormal2D().Rotation().Yaw;
 
-	const float DeltaSigned = FMath::FindDeltaAngleDegrees(ActorYaw, InputYaw); // -180~180
-	const float Angle360 = FRotator::ClampAxis(DeltaSigned);                     // 0~360
-	UE_LOG(LogTemp, Warning, TEXT("last input yaw,%f"), Angle360);
+	//const float DeltaSigned = FMath::FindDeltaAngleDegrees(ActorYaw, InputYaw); // -180~180
+	//const float Angle360 = FRotator::ClampAxis(DeltaSigned);                     // 0~360
+	//UE_LOG(LogTemp, Warning, TEXT("last input yaw,%f"), Angle360);
 
-	if (bIsComboRoll)
-		RollIndex++;
-	bIsComboRoll = false;
-	//UE_LOG(LogTemp, Warning, TEXT("yaw::%f"), RotatYaw);
-	int CounterMax = WeaponSystemComp->CurrentWeapon->Roll_F.Num();
-	RollIndex = UKismetMathLibrary::Wrap(RollIndex, -1, CounterMax - 1);
-	UE_LOG(LogTemp, Warning, TEXT("last input,%s"), *RollDirection.ToString());
-	UE_LOG(LogTemp, Warning, TEXT("last input length,%f"), RollDirection.Length());
-	float Duration = 0;
-	//  不同角度播放不同翻滚动画
-	if (Angle360 < 60)
-	{
-		Duration = CharacterRef->PlayAnimMontage(WeaponSystemComp->CurrentWeapon->Roll_F[RollIndex]);
-		MotionWarpingComp->AddOrUpdateWarpTargetFromLocation(
-			"Roll",
-			CharacterRef->GetActorLocation() +
-			RollDirection * 350
-		);
-	}
-		
-	else if (Angle360 < 120)
-		Duration = CharacterRef->PlayAnimMontage(WeaponSystemComp->CurrentWeapon->Roll_R[RollIndex]);
-	else if (Angle360 < 240)
-	{
+	//if (bIsComboRoll)
+	//	RollIndex++;
+	//bIsComboRoll = false;
+	////UE_LOG(LogTemp, Warning, TEXT("yaw::%f"), RotatYaw);
+	//int CounterMax = WeaponSystemComp->CurrentWeapon->Roll_F.Num();
+	//RollIndex = UKismetMathLibrary::Wrap(RollIndex, -1, CounterMax - 1);
+	//UE_LOG(LogTemp, Warning, TEXT("last input,%s"), *RollDirection.ToString());
+	//UE_LOG(LogTemp, Warning, TEXT("last input length,%f"), RollDirection.Length());
+	//float Duration = 0;
+	////  不同角度播放不同翻滚动画
+	//if (Angle360 < 60)
+	//{
+	//	Duration = CharacterRef->PlayAnimMontage(WeaponSystemComp->CurrentWeapon->Roll_F[RollIndex]);
+	//	MotionWarpingComp->AddOrUpdateWarpTargetFromLocation(
+	//		"Roll",
+	//		CharacterRef->GetActorLocation() +
+	//		RollDirection * 350
+	//	);
+	//}
+	//	
+	//else if (Angle360 < 120)
+	//	Duration = CharacterRef->PlayAnimMontage(WeaponSystemComp->CurrentWeapon->Roll_R[RollIndex]);
+	//else if (Angle360 < 240)
+	//{
 
-		
-		Duration = CharacterRef->PlayAnimMontage(WeaponSystemComp->CurrentWeapon->Roll_B[RollIndex]);
-		MotionWarpingComp->AddOrUpdateWarpTargetFromLocation(
-			"Roll",
-			CharacterRef->GetActorLocation() + RollDirection * 350
-		);
+	//	
+	//	Duration = CharacterRef->PlayAnimMontage(WeaponSystemComp->CurrentWeapon->Roll_B[RollIndex]);
+	//	MotionWarpingComp->AddOrUpdateWarpTargetFromLocation(
+	//		"Roll",
+	//		CharacterRef->GetActorLocation() + RollDirection * 350
+	//	);
 
-	}
-	else if (Angle360 < 300)
-	{
-		Duration = CharacterRef->PlayAnimMontage(WeaponSystemComp->CurrentWeapon->Roll_L[RollIndex]);
-	}
-	else {
+	//}
+	//else if (Angle360 < 300)
+	//{
+	//	Duration = CharacterRef->PlayAnimMontage(WeaponSystemComp->CurrentWeapon->Roll_L[RollIndex]);
+	//}
+	//else {
 
-		Duration = CharacterRef->PlayAnimMontage(WeaponSystemComp->CurrentWeapon->Roll_F[RollIndex]);
-		MotionWarpingComp->AddOrUpdateWarpTargetFromLocation(
-			"Roll",
-			CharacterRef->GetActorLocation() + 
-			RollDirection * 350
-		);
-	}
-	//0.6动画后，可以继续输入
-	CharacterRef->GetWorldTimerManager().SetTimer(
-		RollComboTimeHandler,
-		this,
-		&UPlayerActionsComponent::ComboRollAnim,
-		Duration*0.6,
-		false
-	);
-	FLatentActionInfo RollingInfo(
-		0,
-		501,
-		TEXT("EndRollingHandle"),
-		this
-		);
-	UKismetSystemLibrary::RetriggerableDelay(GetWorld(), Duration * 0.8, RollingInfo);
-	
-	//1动画后，结束翻滚
-	CharacterRef->GetWorldTimerManager().ClearTimer(RollFinishTimeHandler);
-	CharacterRef->GetWorldTimerManager().SetTimer(
-		RollFinishTimeHandler,
-		this,
-		&UPlayerActionsComponent::FinishRollAnim,
-		Duration*1.2,
-		false
-	);
+	//	Duration = CharacterRef->PlayAnimMontage(WeaponSystemComp->CurrentWeapon->Roll_F[RollIndex]);
+	//	MotionWarpingComp->AddOrUpdateWarpTargetFromLocation(
+	//		"Roll",
+	//		CharacterRef->GetActorLocation() + 
+	//		RollDirection * 350
+	//	);
+	//}
+	////0.6动画后，可以继续输入
+	//CharacterRef->GetWorldTimerManager().SetTimer(
+	//	RollComboTimeHandler,
+	//	this,
+	//	&UPlayerActionsComponent::ComboRollAnim,
+	//	Duration*0.6,
+	//	false
+	//);
+	//FLatentActionInfo RollingInfo(
+	//	0,
+	//	501,
+	//	TEXT("EndRollingHandle"),
+	//	this
+	//	);
+	//UKismetSystemLibrary::RetriggerableDelay(GetWorld(), Duration * 0.8, RollingInfo);
+	//
+	////1动画后，结束翻滚
+	//CharacterRef->GetWorldTimerManager().ClearTimer(RollFinishTimeHandler);
+	//CharacterRef->GetWorldTimerManager().SetTimer(
+	//	RollFinishTimeHandler,
+	//	this,
+	//	&UPlayerActionsComponent::FinishRollAnim,
+	//	Duration*1.2,
+	//	false
+	//);
 	
 
 }

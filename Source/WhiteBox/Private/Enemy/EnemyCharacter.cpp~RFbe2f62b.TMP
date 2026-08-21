@@ -1,0 +1,204 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+
+#include "Enemy/EnemyCharacter.h"
+#include "Enemy/TakeDownComponent.h"
+#include "Widget/SceneActorWidget.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "Engine/CollisionProfile.h"
+#include "Enemy/WeaknessSystem.h"
+#include "AbilitySystemComponent.h"
+#include "AttrubuteSet/BasicAttributeSet.h"
+#include "AttrubuteSet/CombatAttributeSet.h"
+#include "Player/StatsComponent.h"
+#include "MotionWarpingComponent.h"
+#include "Combat/PlayerTraceComponent.h"
+#include "Enum/EPlayerStates.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Animation/EnemyAnimInstance.h"
+#include "Combat/WeaponSystemComp.h"
+
+// Sets default values
+AEnemyCharacter::AEnemyCharacter()
+{
+ 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	PrimaryActorTick.bCanEverTick = true;
+	TakeDownComp = CreateDefaultSubobject<UTakeDownComponent>(TEXT("TakeDownComp"));
+	StatsComp = CreateDefaultSubobject<UStatsComponent>(TEXT("StatsComp"));
+	UIComp = CreateDefaultSubobject<USceneActorWidget>(TEXT("UIComp"));
+	//UIComp->SetupAttachment(GetMesh());
+	SkelealComp = GetComponentByClass<USkeletalMeshComponent>();
+	WeaknessComp = CreateDefaultSubobject<UWeaknessSystem>(TEXT("WeaknessSystemComp"));
+	AbilitySysComp = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySysComp"));
+	BasicAttributeSet = CreateDefaultSubobject<UBasicAttributeSet>(TEXT("BasicAttributeSet"));
+	CombatAttributeSet = CreateDefaultSubobject<UCombatAttributeSet>(TEXT("CombatAttributeSet"));
+	WeaponSystemComp = CreateDefaultSubobject<UWeaponSystemComp>(TEXT("WeaponSystemComp"));
+	MotionWarpingComp = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComp"));
+	TraceComp = CreateDefaultSubobject<UPlayerTraceComponent>(TEXT("TraceComp"));
+	CharacterUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComp")); 
+	CharacterUI->SetupAttachment(GetMesh());
+	
+	
+}
+
+UAbilitySystemComponent* AEnemyCharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySysComp;
+}
+
+void AEnemyCharacter::SetGate(E_Gate NewGate)
+{
+	CurrentGate = NewGate;
+	if (UEnemyAnimInstance* EnemyAnimInst = Cast<UEnemyAnimInstance>(GetMesh()->GetAnimInstance()))
+	{
+		EnemyAnimInst->CurrentGate = NewGate;
+	}
+
+	FGateSetting GateSet = GateSettings.FindRef(NewGate);
+	UCharacterMovementComponent* CharacterMovementComp = GetCharacterMovement();
+	CharacterMovementComp->MaxWalkSpeed = GateSet.MaxWalkSpeed;
+	CharacterMovementComp->MaxAcceleration = GateSet.MaxAcceleration;
+	CharacterMovementComp->BrakingDecelerationWalking = GateSet.BrakingDeceleration;
+	CharacterMovementComp->BrakingFrictionFactor = GateSet.BrakingFrictionFactor;
+	CharacterMovementComp->BrakingFriction = GateSet.BrakingFriction;
+	CharacterMovementComp->bUseSeparateBrakingFriction = GateSet.UseSeperateBrakingFriction;
+		
+}
+
+void AEnemyCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	if (AbilitySysComp)
+	{
+		AbilitySysComp->InitAbilityActorInfo(this, this);
+		AbilitySysComp->InitStats(BasicAttributeSet->GetClass(), EnemyBasicAttributeDataTable);
+	}
+}
+
+// Called when the game starts or when spawned
+void AEnemyCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (AbilitySysComp)
+	{
+		AbilitySysComp->SetIsReplicated(true);
+		AbilitySysComp->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+		AbilitySysComp->InitAbilityActorInfo(this, this);
+	}
+	/*AnimInstance = GetMesh()->GetAnimInstance();
+	UIComp->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FX_Head"));*/
+
+	EndDelegate.BindUFunction(this, "OnCatchHandle");
+
+
+
+	for (TSubclassOf<UGameplayAbility> ability : InitalEnemyAbilities)
+	{
+		if (!*ability)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("EnemyCharacter: Skipping null entry in InitalEnemyAbilities on %s."), *GetName());
+			continue;
+		}
+		AbilitySysComp->GiveAbility(FGameplayAbilitySpec(ability, 1, -1, this));
+	}
+	TArray<FGameplayAbilitySpecHandle> Attributes;
+	AbilitySysComp->GetAllAbilities(Attributes);
+	UE_LOG(LogTemp, Warning, TEXT("AbilityNum: %d"), Attributes.Num());
+
+	auto RegisterTagEvent = [this](const FName TagName, void (AEnemyCharacter::* Callback)(const FGameplayTag, int32))
+		{
+			const FGameplayTag Tag = FGameplayTag::RequestGameplayTag(TagName, false);
+			if (Tag.IsValid())
+			{
+				AbilitySysComp->RegisterGameplayTagEvent(Tag).AddUObject(this, Callback);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("PlayerCharacter: GameplayTag '%s' is missing."), *TagName.ToString());
+			}
+		};
+
+	RegisterTagEvent(TEXT("Stats.PoiseMax"), &AEnemyCharacter::OnEnemyPoiseMaxTagChange);
+	
+}
+
+void AEnemyCharacter::OnEnemyPoiseMaxTagChange(const FGameplayTag Callbacktage, int32 NewCount)
+{
+
+	if (NewCount > 0)
+	{
+		PlayerStats = EPlayerStates::PoiseMax;
+	}
+	if (NewCount <= 0)
+	{
+		PlayerStats = EPlayerStates::CharacterNoneStats;
+
+	}
+}
+
+// Called every frame
+void AEnemyCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+}
+
+// Called to bind functionality to input
+void AEnemyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+}
+
+void AEnemyCharacter::beTakeDownHandle(UAnimMontage* beTakeDownAnim)
+{
+	PlayAnimMontage(beTakeDownAnim);
+}
+
+void AEnemyCharacter::Catch()
+{
+	bIsCatchComplete = false;
+	float MontagePlayLength = PlayAnimMontage(CatchAnimMontage);
+	AnimInstance->Montage_SetEndDelegate(EndDelegate);
+
+	EObjectTypeQuery PawnObjectType = UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_Pawn);
+	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+	ObjectTypes.Add(PawnObjectType);
+	TArray<AActor*> IngoreActor;
+	IngoreActor.Add(this);
+	TArray<FHitResult> OutHit;
+	FVector Start = GetActorLocation();
+	FVector End = Start + GetActorForwardVector() * 200.f;
+	UKismetSystemLibrary::SphereTraceMultiForObjects(
+		GetWorld(),
+		Start,
+		End,
+		35.f,
+		ObjectTypes,
+		false,
+		IngoreActor,
+		EDrawDebugTrace::ForDuration,
+		OutHit,
+		true,
+		FLinearColor::Red,
+		FLinearColor::Green,
+		5.f
+	);
+
+	UUserWidget* addUI =  CreateWidget(GetWorld(), CatchUI);
+	addUI->AddToViewport();
+}
+
+void AEnemyCharacter::OnCatchHandle()
+{
+	bIsCatchComplete = true;
+}
+
+
+
+
+
+
+

@@ -24,7 +24,7 @@ void UGA_RegenStamina::RegenStaminaHandle(const FOnAttributeChangeData& Data)
 	NewValue = Data.NewValue;
 	OldValue = Data.OldValue;
 
-
+	
 	if (OldValue < NewValue)
 	{
 
@@ -32,8 +32,8 @@ void UGA_RegenStamina::RegenStaminaHandle(const FOnAttributeChangeData& Data)
 	}
 
 
-	UE_LOG(LogTemp, Warning, TEXT("OldValue1: %f"), OldValue);
-	UE_LOG(LogTemp, Warning, TEXT("NewValue1: %f"), NewValue);
+	/*UE_LOG(LogTemp, Warning, TEXT("OldValue1: %f"), OldValue);
+	UE_LOG(LogTemp, Warning, TEXT("NewValue1: %f"), NewValue);*/
 	FLatentActionInfo ActionInfo{
 		1,
 		901,
@@ -46,11 +46,18 @@ void UGA_RegenStamina::RegenStaminaHandle(const FOnAttributeChangeData& Data)
 		//CharRef->AbilitySystemComp->RemoveActiveGameplayEffect(ActiveHandle, -1);
 		UKismetSystemLibrary::RetriggerableDelay(GetWorld(), 2.f, ActionInfo);
 	}
+
+	if (NewValue >= CharRef->AttributeSet->MaxStamina.GetCurrentValue())
+	{
+		CharRef->AbilitySystemComp->RemoveActiveGameplayEffect(ActiveHandle,-1);
+		ActiveHandle.Invalidate();
+	}
+	
 }
 
 void UGA_RegenStamina::RegenStaminDataHandle()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Regen!!!!"));
+	/*UE_LOG(LogTemp, Warning, TEXT("Regen!!!!"));*/
 	if (!RegenEffect) return;
 	ActiveHandle =  CharRef->AbilitySystemComp->ApplyGameplayEffectSpecToSelf(*RegenSpecHandle.Data.Get());
 }

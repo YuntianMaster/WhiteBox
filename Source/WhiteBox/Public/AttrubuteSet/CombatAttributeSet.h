@@ -42,5 +42,24 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
 	FGameplayAttributeData MaxArmor;
 	ATTRIBUTE_ACCESSORS(UCombatAttributeSet, MaxArmor);
+
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData MeleeAttackRange;
+	ATTRIBUTE_ACCESSORS(UCombatAttributeSet, MeleeAttackRange);
+
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData WalkSpeed;
+	ATTRIBUTE_ACCESSORS(UCombatAttributeSet, WalkSpeed);
+
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData SprintSpeed;
+	ATTRIBUTE_ACCESSORS(UCombatAttributeSet, SprintSpeed);
+
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData StrafeSpeed;
+	ATTRIBUTE_ACCESSORS(UCombatAttributeSet, StrafeSpeed);
 	
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData StrafeRange;
+	ATTRIBUTE_ACCESSORS(UCombatAttributeSet, StrafeRange);
 };

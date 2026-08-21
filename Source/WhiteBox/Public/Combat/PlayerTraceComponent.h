@@ -20,7 +20,8 @@ public:
 	class UParticleSystem* bloodParticle;
 	class ACharacter* OwnRef;
 	class UWeaponSystemComp* WeaponSystemComp;
-
+	class UGA_WarpMontageAttack* GA_WarpMontageAttack;
+	int32 Trace_MontageInstanceID;
 
 
 

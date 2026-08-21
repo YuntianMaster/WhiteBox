@@ -21,7 +21,10 @@ public class WhiteBox : ModuleRules
 			"UMG",
             "EnhancedInput",
             "GameplayAbilities",
-			"AdvancedWidgets"
+			"AdvancedWidgets",
+            "GameplayCameras",
+            "GameplayStateTreeModule",
+            "StateTreeModule",
         });
 		
 		

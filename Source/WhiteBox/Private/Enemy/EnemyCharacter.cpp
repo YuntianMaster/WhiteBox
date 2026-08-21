@@ -12,6 +12,12 @@
 #include "AttrubuteSet/BasicAttributeSet.h"
 #include "AttrubuteSet/CombatAttributeSet.h"
 #include "Player/StatsComponent.h"
+#include "MotionWarpingComponent.h"
+#include "Combat/PlayerTraceComponent.h"
+#include "Enum/EPlayerStates.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Animation/EnemyAnimInstance.h"
+#include "Combat/WeaponSystemComp.h"
 
 // Sets default values
 AEnemyCharacter::AEnemyCharacter()
@@ -27,21 +33,109 @@ AEnemyCharacter::AEnemyCharacter()
 	AbilitySysComp = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySysComp"));
 	BasicAttributeSet = CreateDefaultSubobject<UBasicAttributeSet>(TEXT("BasicAttributeSet"));
 	CombatAttributeSet = CreateDefaultSubobject<UCombatAttributeSet>(TEXT("CombatAttributeSet"));
-	CharacterUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComp"));
+	WeaponSystemComp = CreateDefaultSubobject<UWeaponSystemComp>(TEXT("WeaponSystemComp"));
+	MotionWarpingComp = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComp"));
+	TraceComp = CreateDefaultSubobject<UPlayerTraceComponent>(TEXT("TraceComp"));
+	CharacterUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComp")); 
 	CharacterUI->SetupAttachment(GetMesh());
+	
+	
+}
+
+UAbilitySystemComponent* AEnemyCharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySysComp;
+}
+
+void AEnemyCharacter::SetGate(E_Gate NewGate)
+{
+	CurrentGate = NewGate;
+	if (UEnemyAnimInstance* EnemyAnimInst = Cast<UEnemyAnimInstance>(GetMesh()->GetAnimInstance()))
+	{
+		EnemyAnimInst->CurrentGate = NewGate;
+	}
+
+	FGateSetting GateSet = GateSettings.FindRef(NewGate);
+	UCharacterMovementComponent* CharacterMovementComp = GetCharacterMovement();
+	CharacterMovementComp->MaxWalkSpeed = GateSet.MaxWalkSpeed;
+	CharacterMovementComp->MaxAcceleration = GateSet.MaxAcceleration;
+	CharacterMovementComp->BrakingDecelerationWalking = GateSet.BrakingDeceleration;
+	CharacterMovementComp->BrakingFrictionFactor = GateSet.BrakingFrictionFactor;
+	CharacterMovementComp->BrakingFriction = GateSet.BrakingFriction;
+	CharacterMovementComp->bUseSeparateBrakingFriction = GateSet.UseSeperateBrakingFriction;
 		
+}
+
+void AEnemyCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	if (AbilitySysComp)
+	{
+		AbilitySysComp->InitAbilityActorInfo(this, this);
+		AbilitySysComp->InitStats(BasicAttributeSet->GetClass(), EnemyBasicAttributeDataTable);
+	}
 }
 
 // Called when the game starts or when spawned
 void AEnemyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (AbilitySysComp)
+	{
+		AbilitySysComp->SetIsReplicated(true);
+		AbilitySysComp->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+		AbilitySysComp->InitAbilityActorInfo(this, this);
+	}
 	/*AnimInstance = GetMesh()->GetAnimInstance();
 	UIComp->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, TEXT("FX_Head"));*/
 
 	EndDelegate.BindUFunction(this, "OnCatchHandle");
 
 
+
+	for (TSubclassOf<UGameplayAbility> ability : InitalEnemyAbilities)
+	{
+		if (!*ability)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("EnemyCharacter: Skipping null entry in InitalEnemyAbilities on %s."), *GetName());
+			continue;
+		}
+		AbilitySysComp->GiveAbility(FGameplayAbilitySpec(ability, 1, -1, this));
+	}
+	TArray<FGameplayAbilitySpecHandle> Attributes;
+	AbilitySysComp->GetAllAbilities(Attributes);
+	UE_LOG(LogTemp, Warning, TEXT("AbilityNum: %d"), Attributes.Num());
+
+	auto RegisterTagEvent = [this](const FName TagName, void (AEnemyCharacter::* Callback)(const FGameplayTag, int32))
+		{
+			const FGameplayTag Tag = FGameplayTag::RequestGameplayTag(TagName, false);
+			if (Tag.IsValid())
+			{
+				AbilitySysComp->RegisterGameplayTagEvent(Tag).AddUObject(this, Callback);
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("PlayerCharacter: GameplayTag '%s' is missing."), *TagName.ToString());
+			}
+		};
+
+	RegisterTagEvent(TEXT("Stats.PoiseMax"), &AEnemyCharacter::OnEnemyPoiseMaxTagChange);
+	
+}
+
+void AEnemyCharacter::OnEnemyPoiseMaxTagChange(const FGameplayTag Callbacktage, int32 NewCount)
+{
+
+	if (NewCount > 0)
+	{
+		EnemyPlayerStats = EPlayerStates::PoiseMax;
+	}
+	if (NewCount <= 0)
+	{
+		EnemyPlayerStats = EPlayerStates::CharacterNoneStats;
+
+	}
 }
 
 // Called every frame
@@ -101,6 +195,7 @@ void AEnemyCharacter::OnCatchHandle()
 {
 	bIsCatchComplete = true;
 }
+
 
 
 

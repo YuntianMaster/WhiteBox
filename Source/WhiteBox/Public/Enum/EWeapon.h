@@ -13,6 +13,8 @@ enum EWeapons
 	GeneralBow UMETA(DisplayName = "GeneralBow"),
 	GeneralQuivler UMETA(DisplayName = "GeneralQuivler"),
 	GeneralRock UMETA(DisplayName = "GeneralRock"),
-	GeneralDoubleKnife UMETA(DisplayName = "GeneralDoubleKnife")
+	GeneralDoubleKnife UMETA(DisplayName = "GeneralDoubleKnife"),
+	GeneralWhip UMETA(DisplayName = "GeneralWhip"),
+	DualSword UMETA(DisplayName = "DualSword")
 
 };

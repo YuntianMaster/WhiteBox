@@ -109,15 +109,26 @@ void UTalentComp::GrantTalent(UPDA_Talent* Talent)
 	{
 		return;
 	}
-	for(TSubclassOf<UGameplayAbility> GA : Talent->GAs)
+	for (TSubclassOf<UGameplayAbility> GA : Talent->GAs)
 	{
-		FGameplayAbilitySpecHandle GAHandle = ASC->GiveAbility(FGameplayAbilitySpec(GA, 1, 0,GetOwner()));
+		if (!*GA)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("TalentComp: Skipping null GA on talent %s."), *GetNameSafe(Talent));
+			continue;
+		}
+		FGameplayAbilitySpecHandle GAHandle = ASC->GiveAbility(FGameplayAbilitySpec(GA, 1, 0, GetOwner()));
 		GrantedTalents_GA.FindOrAdd(Talent).Add(GAHandle);
 	}
-	for(TSubclassOf<UGameplayEffect> GE : Talent->GEs)
+	for (TSubclassOf<UGameplayEffect> GE : Talent->GEs)
 	{
-		FActiveGameplayEffectHandle GE_Handle = 
-			ASC->ApplyGameplayEffectToSelf(GE.GetDefaultObject(), 1, ASC->MakeEffectContext());
+		UGameplayEffect* GECDO = GE.GetDefaultObject();
+		if (!GECDO)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("TalentComp: Skipping null GE on talent %s."), *GetNameSafe(Talent));
+			continue;
+		}
+		FActiveGameplayEffectHandle GE_Handle =
+			ASC->ApplyGameplayEffectToSelf(GECDO, 1, ASC->MakeEffectContext());
 		GrantedTalents_GE.FindOrAdd(Talent).Add(GE_Handle);
 	}
 	Talent->CurrentLevel = 1;
@@ -167,7 +178,7 @@ void UTalentComp::LevelUpTalent(UPDA_Talent* Talent)
 				ASC->GiveAbility(FGameplayAbilitySpec(AbilityClass, GA_Lv + 1, InputID, GetOwner()));
 			NewGAs.Add(NewSpecHandle);
 		}
-		GrantedTalents_GA.FindOrAdd(Talent) = MoveTemp(NewGAs);
+		GrantedTalents_GA.FindOrAdd(Talent) = MoveTemp(NewGAs); 
 	}
 
 	TArray<FActiveGameplayEffectHandle>* OldGEs = GrantedTalents_GE.Find(Talent);

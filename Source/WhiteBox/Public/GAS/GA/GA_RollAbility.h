@@ -37,5 +37,23 @@ protected:
 	class UAbilityTask_WaitDelay* DelayEndActive{ nullptr };
 	FGameplayEffectSpecHandle RollingSpecHandle;
 	FActiveGameplayEffectHandle RollingHandle;
+	UFUNCTION()
+	void ResetMeshDirection();
+
+	enum class ERollDirection
+	{
+		NOINPUT,
+		F,
+		FR,
+		R,
+		BR,
+		B,
+		BL,
+		L,
+		FL
+
+	};
+
+	ERollDirection EROLLDir{ ERollDirection::NOINPUT };
 	
 };

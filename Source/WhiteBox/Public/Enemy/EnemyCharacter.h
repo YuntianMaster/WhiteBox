@@ -7,17 +7,28 @@
 #include "Enemy/TakeDownComponent.h"
 #include "Steal.h"
 #include "Interface/Fighter.h"
+#include "Enemy/EEnemyStats.h"
 #include "Interface/Enemy.h"
+#include "Enum/E_Gate.h"
+#include "Structure/FGateSetting.h"
+#include "AbilitySystemInterface.h"
+#include "AbilitySystemComponent.h"
+#include "Enum/EPlayerStates.h"
 #include "EnemyCharacter.generated.h"
 
 UCLASS()
-class WHITEBOX_API AEnemyCharacter : public ACharacter, public ISteal,public IFighter,public IEnemy
+class WHITEBOX_API AEnemyCharacter : public ACharacter, public ISteal, public IFighter, public IEnemy, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
 	// Sets default values for this character's properties
 	AEnemyCharacter();
+
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	UFUNCTION(BlueprintCallable)
+	void SetGate(E_Gate NewGate);
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	class UTakeDownComponent* TakeDownComp;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -30,9 +41,24 @@ public:
 	class UCombatAttributeSet* CombatAttributeSet;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	class UWidgetComponent* CharacterUI;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UWeaponSystemComp* WeaponSystemComp;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UMotionWarpingComponent* MotionWarpingComp;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UPlayerTraceComponent* TraceComp;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TEnumAsByte<EPlayerStates> EnemyPlayerStats{ EPlayerStates::CharacterNoneStats };
+
+
 protected:
+	virtual void PossessedBy(AController* NewController) override;
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UDataTable* EnemyBasicAttributeDataTable;
+	void OnEnemyPoiseMaxTagChange(const FGameplayTag Callbacktage, int32 NewCount);
 
 public:	
 	// Called every frame
@@ -63,5 +89,18 @@ public:
 	TSubclassOf<UUserWidget> CatchUI;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	USoundBase* ShoutSound;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<TSubclassOf<class UGameplayAbility>> InitalEnemyAbilities;
+	UPROPERTY(BlueprintReadWrite)
+	TEnumAsByte<EEnemyStats> EnemyStates;
+	UPROPERTY(BlueprintReadWrite)
+	AActor* Target;
+	UPROPERTY(BlueprintReadWrite)
+	TEnumAsByte<E_Gate> CurrentGate;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TMap<TEnumAsByte<E_Gate>, FGateSetting> GateSettings;
+
 };
  
