@@ -142,7 +142,16 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 		if (GetPoise() == GetMaxPoise()) {
 			UE_LOG(LogTemp, Warning, TEXT("PostGameplayEffectExecute: Poise MAX"));
 			OnPoiseGetMaxHandle(Data);
+			Poise = 0;
+			SetPoise(0);
 
+			UE_LOG(LogTemp, Warning, TEXT("After zero: GetPoise=%f Base=%f Current=%f"),
+				GetPoise(), Poise.GetBaseValue(), Poise.GetCurrentValue());
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("ASC Numeric: %f"),
+					ASC->GetNumericAttribute(GetPoiseAttribute()));
+			}
 		}
 
 

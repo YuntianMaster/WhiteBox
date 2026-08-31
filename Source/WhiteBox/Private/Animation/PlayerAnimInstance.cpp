@@ -5,7 +5,6 @@
 #include "Combat/WeaponSystemComp.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Player/PlayerCharacter.h"
 
 void UPlayerAnimInstance::UpdateTheVelocity()
 {
@@ -220,13 +219,9 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaTimeX)
 {
 	Super::NativeUpdateAnimation(DeltaTimeX);
 
-	if (APawn* PawnRef = TryGetPawnOwner())
-	{
-		CachedOwnerVelocity = PawnRef->GetVelocity();
-		CachedOwnerRotation = PawnRef->GetActorRotation();
-		
-	}
 
+
+	UpdateFallingAnimState();
 
 
 
@@ -240,5 +235,37 @@ void UPlayerAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 	UpdateAccelerationDirection();
 	UpdateCharacterGateState();
 	UpdateDeltaLocation();
+
+	
 	//UpdateRootYawOffset(DeltaSeconds);
+}
+
+FAnimInstStruct UPlayerAnimInstance::GetBoneWarpStruct(FName BoneName)
+{
+	if (const FAnimInstStruct* Entry = BoneWarpMap.Find(BoneName))
+	{
+		return *Entry;
+	}
+	// AnimBP 可能在 Notify 写入前就查询；键不存在时不要用 operator[]（会 assert）
+	return FAnimInstStruct();
+}
+
+void UPlayerAnimInstance::UpdateFallingAnimState()
+{
+	bShouldPlayFallingAnim = false;
+	APawn* Pawn = TryGetPawnOwner();
+	if (!Pawn) return;
+	UCharacterMovementComponent* Move = Pawn->FindComponentByClass<UCharacterMovementComponent>();
+	if (!Move) return;
+	const bool bIsFalling = Move->IsFalling();
+	const float FloorDist = Move->CurrentFloor.FloorDist; 
+	// 进入/退出滞后
+	if (bShouldPlayFallingAnim)
+	{
+		bShouldPlayFallingAnim = bIsFalling && (FloorDist > FallingExitFloorDist);
+	}
+	else
+	{
+		bShouldPlayFallingAnim = bIsFalling && (FloorDist > FallingEnterFloorDist);
+	}
 }

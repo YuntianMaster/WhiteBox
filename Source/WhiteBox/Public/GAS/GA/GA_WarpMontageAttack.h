@@ -16,9 +16,9 @@ class WHITEBOX_API UGA_WarpMontageAttack : public UGA_GameAblilityBase
 	GENERATED_BODY()
 protected:
 	UFUNCTION(BlueprintCallable)
-	void WarpMontageHandler();
+	virtual void WarpMontageHandler();
 	UFUNCTION(BlueprintCallable)
-	void NoWarpMontageHandle();
+	virtual void NoWarpMontageHandle();
 
 	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, 
 		const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
@@ -45,6 +45,13 @@ protected:
 	void OnMotionWarpUpdate(class UMotionWarpingComponent* UWC);
 	UFUNCTION()
 	void OnTraceHitHandle(FGameplayEventData Payload);
+	//Tick����MontagePlayRate
+	UFUNCTION()
+	void UpdatePlayeRate(float DeltaTime);
+
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnTraceSuccessBroadCast();
 		
 protected:
 
@@ -72,30 +79,39 @@ protected:
 
 
 
-	UPROPERTY(BlueprintReadWrite,EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Montage")
 	UAnimMontage* AttackMontage;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Montage")
+	bool bIsNeedCurveMontagePlayRate{ false };
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bIsNeedCurveMontagePlayRate"), Category = "Montage")
+	FName PlayRateCurve = "PlayRateCurve";
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Warp")
 	FName AttackWarpingName;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "EndLocation")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Warp|EndLocation")
 	FName EndWarpingName;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "EndLocation")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Warp|EndLocation")
 	FVector EndWarpingLocation;
+	//True��׷�ٵ���Ŀ�꣬False׷��EQS��ѯ��ַ
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Warp")
+	bool bIsActorTarget{ true };
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	float PlayRate;
+	float PlayRate{1.f};
 	class UMotionWarpingComponent* MWcomp;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Warp")
 	bool bTrackTarget{ true };
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Warp|Offset")
 	float WarpDistanceOffset;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Warp|Offset")
 	FVector WarpOffset;
 
 	bool bEndWarpStarted = false;
 public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float DamageMagnitude;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitCritial")
+	bool bIsCriticalHit{false};
 	int32 MontageInstanceID;
 };

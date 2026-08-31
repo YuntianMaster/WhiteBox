@@ -7,6 +7,13 @@
 #include "EnvironmentQuery/EnvQueryTypes.h"
 #include "GA_GameAblilityBase.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(
+	FEQSFinishSignature,
+	UGA_GameAblilityBase, OnEQSFinishDelegate,
+	FVector, EQS_Location
+);
+
+
 
 /**
  * 
@@ -34,6 +41,7 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	FVector EQSQueryLocation;
 
+	FEQSFinishSignature OnEQSFinishDelegate;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bAutoActive = false;
@@ -72,7 +80,10 @@ protected:
 	class AEnemyAIController* EnemyAIRef;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EQS")
 	UEnvQuery* QueryTemplate;
-
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EQS")
+	bool bIsNeedTargetCheck{ true };
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EQS")
+	TEnumAsByte<EEnvQueryRunMode::Type> EQSMode;
 
 	virtual void OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
 	virtual void OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
@@ -87,7 +98,10 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "EQS")
 	void OnCoverEQSFailed();
 
-	void OnEQSFinished(TSharedPtr<FEnvQueryResult> Result);
+	virtual void OnEQSFinished(TSharedPtr<FEnvQueryResult> Result);
+
+	/** 从 EQS 结果里按 RunMode 选取有效 Item（Score > 0）的位置 */
+	bool TrySelectEQSLocation(const FEnvQueryResult& Result, FVector& OutLocation, int32& OutItemIndex) const;
 
 	//向自己身执行GE
 	UFUNCTION(BlueprintCallable)

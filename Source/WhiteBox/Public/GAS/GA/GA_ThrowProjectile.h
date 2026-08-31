@@ -4,13 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GA_PlayMontage.h"
+#include "GAS/GA/GA_WarpMontageAttack.h"
 #include "GA_ThrowProjectile.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class WHITEBOX_API UGA_ThrowProjectile : public UGA_PlayMontage
+class WHITEBOX_API UGA_ThrowProjectile : public UGA_WarpMontageAttack
 {
 	GENERATED_BODY()
 protected:

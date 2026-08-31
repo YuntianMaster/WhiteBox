@@ -15,6 +15,7 @@
 #include "AttrubuteSet/CombatAttributeSet.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Kismet/GameplayStatics.h"
+#include "Structure/FGASStucts.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
 // Sets default values
@@ -256,7 +257,11 @@ void AGeneralProjectile::OnHitHandle(AActor* HitObject)
 		FGameplayAbilityTargetData_SingleTargetHit* const SingleHit = new FGameplayAbilityTargetData_SingleTargetHit();
 		SingleHit->HitResult = Hits;
 		FGameplayEventData TakeHitData;
+
+		FTraceMontageID* TraceMontage = new FTraceMontageID();
+		TraceMontage->TRACE_MONTAGE_ID = Montage_ID;
 		TakeHitData.Instigator = GetInstigator();
+		TakeHitData.TargetData.Add(TraceMontage);
 		TakeHitData.TargetData.Add(SingleHit);
 		TakeHitData.EventMagnitude = DamageMagnitude;
 		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(

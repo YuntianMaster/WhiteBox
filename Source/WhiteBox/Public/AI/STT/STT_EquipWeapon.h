@@ -19,6 +19,8 @@ protected:
 	TEnumAsByte<EWeapons> WeaponName;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Context")
 	class AEnemyCharacter* EnemyActor;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float WaitEquipTime = 3.f;
 protected:
 	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) override;
 

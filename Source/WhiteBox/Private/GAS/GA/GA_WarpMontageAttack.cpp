@@ -13,34 +13,11 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Structure/FGASStucts.h"
+#include "GAS/Task/AbilityTask_Tick.h"
 #include "EnvironmentQuery/EnvQueryManager.h"
 
 namespace WarpMontageAttack_Private
 {
-	//bool IsAvatarPhysicallyOnGround(UCharacterMovementComponent* MoveComp)
-	//{
-	//	if (!MoveComp || !MoveComp->UpdatedComponent)
-	//	{
-	//		return false;
-	//	}
-
-	//	// Only true in Walking / NavWalking.
-	//	if (MoveComp->IsMovingOnGround())
-	//	{
-	//		return true;
-	//	}
-
-	//	// After MOVE_Flying / MOVE_Falling, IsMovingOnGround is always false
-	//	// even when the capsule is still touching a walkable floor. Probe floor.
-	//	if (MoveComp->CurrentFloor.IsWalkableFloor())
-	//	{
-	//		return true;
-	//	}
-
-	//	FFindFloorResult FloorResult;
-	//	MoveComp->FindFloor(MoveComp->UpdatedComponent->GetComponentLocation(), FloorResult, false);
-	//	return FloorResult.IsWalkableFloor();
-	//}
 
 	UCharacterMovementComponent* GetMoveComp(AActor* Avatar)
 	{
@@ -99,7 +76,7 @@ namespace WarpMontageAttack_Private
 	// END TEMP DEBUG
 	// =============================================================================
 }
-
+// 播放需要Warping的动画
 void UGA_WarpMontageAttack::WarpMontageHandler()
 {
 	AActor* Avatar = GetAvatarActorFromActorInfo();
@@ -145,7 +122,7 @@ void UGA_WarpMontageAttack::WarpMontageHandler()
 	}
 
 }
-
+// 播放不需要Warping的动画
 void UGA_WarpMontageAttack::NoWarpMontageHandle()
 {
 	AActor* Avatar = GetAvatarActorFromActorInfo();
@@ -234,27 +211,40 @@ void UGA_WarpMontageAttack::ActivateAbility(const FGameplayAbilitySpecHandle Han
 	// Do not SetMovementMode(MOVE_Flying) here.
 	// WarpMontageHandler may still need a ground check; flying first makes IsMovingOnGround always false.
 
+	//接收TraceComp的碰撞结果
 	UAbilityTask_WaitGameplayEvent* TraceHitSuccess = 
 		UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this,FGameplayTag::RequestGameplayTag("Event.Combat.TraceHitSucess"));
 
 	TraceHitSuccess->EventReceived.AddDynamic(this, &UGA_WarpMontageAttack::OnTraceHitHandle);
-	
 	TraceHitSuccess->ReadyForActivation();
+
+	//注册TickTask
+	UAbilityTask_Tick* TickTask = UAbilityTask_Tick::Create(this);
+	if(bIsNeedCurveMontagePlayRate)
+	{
+		TickTask->OnTick.AddDynamic(this, &UGA_WarpMontageAttack::UpdatePlayeRate);
+		TickTask->ReadyForActivation();
+	}
 }
 
 
 void UGA_WarpMontageAttack::OnTraceHitHandle(FGameplayEventData Payload)
 {
+
+	OnTraceSuccessBroadCast();
+	
 	const FTraceMontageID* Data =
 		static_cast<const FTraceMontageID*>(Payload.TargetData.Get(0));
 	Payload.EventMagnitude = DamageMagnitude;
 
+	FGameplayTag HitTag = 
+		bIsCriticalHit ? FGameplayTag::RequestGameplayTag("Event.Combat.TakeCriticalHit") : FGameplayTag::RequestGameplayTag("Event.Combat.TakeHit");
 	AActor* TargetActor = const_cast<AActor*>(Payload.Target.Get());
 	if (MontageInstanceID == Data->TRACE_MONTAGE_ID)
 	{
 		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
 			TargetActor,
-			FGameplayTag::RequestGameplayTag("Event.Combat.TakeHit"),
+			HitTag,
 			Payload
 		);
 
@@ -263,6 +253,30 @@ void UGA_WarpMontageAttack::OnTraceHitHandle(FGameplayEventData Payload)
 	UE_LOG(LogTemp, Warning, TEXT("Payload ID: %i"),MontageInstanceID);
 		
 }
+
+void UGA_WarpMontageAttack::UpdatePlayeRate(float DeltaTime)
+{
+	ACharacter* ActorChar = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	UAnimInstance* AnimInst = ActorChar->GetMesh()->GetAnimInstance();
+	if (!AnimInst->Montage_IsPlaying(AttackMontage))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::UpdatePlayeRate: Montage is not playing"));
+		return;
+	}
+
+	if (!AttackMontage->HasCurveData(PlayRateCurve)) {
+
+		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::UpdatePlayeRate: PlayRateCurve is not exist"));
+		return;
+	}
+	
+	float Rate = AnimInst->GetCurveValue(PlayRateCurve);
+	UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::UpdatePlayeRate: PlayRateCurve value : %f"), Rate);
+	Rate *= PlayRate;
+	AnimInst->Montage_SetPlayRate(AttackMontage, Rate);
+
+}
+
 
 void UGA_WarpMontageAttack::OnAttackCompleted()
 {
@@ -356,14 +370,37 @@ void UGA_WarpMontageAttack::WarpTarget_NOTRACKING()
 		return;
 	}
 
-	if (EQSQueryLocation.IsZero())
+
+	AActor* TargetActor = EnemyAIRef->EnemyTargetActor;
+	if (!TargetActor)
+	{
+
+		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack: Enemy No Target"));
+		EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
+		return;
+	}
+
+
+
+	FVector TargetLocation = TargetActor->GetActorLocation();
+	bIsActorTarget ? TargetLocation : TargetLocation = EQSQueryLocation;
+	FTransform ActorTran = Avatar->GetActorTransform();
+	FVector Directon = (ActorLocation - TargetLocation).GetSafeNormal();
+	FVector WarpLoc = TargetLocation + Directon * WarpDistanceOffset + ActorTran.TransformVector(WarpOffset);
+
+
+	if (EQSQueryLocation.IsZero()&&!bIsActorTarget)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("EQSQueryLocation is zero!"));
 		return;
 	}
 
+	FRotator WarpRot = (-Directon).Rotation();
+	WarpRot.Roll = 0;
+	WarpRot.Pitch = 0;
+
 	UE_LOG(LogTemp, Warning, TEXT("Attacking!"));
-	MWcomp->AddOrUpdateWarpTargetFromLocation(AttackWarpingName, EQSQueryLocation);
+	MWcomp->AddOrUpdateWarpTargetFromLocationAndRotation(AttackWarpingName, WarpLoc, WarpRot);
 	MontageAttackTask->ReadyForActivation();
 	if (PlayerTraceComponent)
 	{
@@ -453,16 +490,31 @@ void UGA_WarpMontageAttack::EndMovementModeChangeHandle()
 void UGA_WarpMontageAttack::OnMotionWarpUpdate(UMotionWarpingComponent* UWC)
 {
 	AActor* Avatar = GetAvatarActorFromActorInfo();
+	if (!EnemyAIRef)
+	{
+
+		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack: EnemyAIRef is not found"));
+		return;
+	}
+
 	AActor* TargetActor = EnemyAIRef->EnemyTargetActor;
+	if (!TargetActor)
+	{
+
+		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack: Enemy No Target"));
+		return;
+	}
+
 	FVector ActorLocation = Avatar->GetActorLocation();
 	FVector TargetLocation = TargetActor->GetActorLocation();
+	bIsActorTarget ? TargetLocation : TargetLocation = EQSQueryLocation;
 	FTransform ActorTran = Avatar->GetActorTransform();
 	FVector Directon = (ActorLocation - TargetLocation).GetSafeNormal();
 	FVector WarpLoc = TargetLocation + Directon * WarpDistanceOffset + ActorTran.TransformVector(WarpOffset);
 	FRotator WarpRot = (-Directon).Rotation();
 	WarpRot.Roll = 0;
 	WarpRot.Pitch = 0;
-	//UE_LOG(LogTemp, Warning, TEXT("WarpLoc: %s!"),*WarpLoc.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("WarpLoc: %s!"),*WarpLoc.ToString());
 
 	UWC->AddOrUpdateWarpTargetFromLocationAndRotation(
 		AttackWarpingName,
@@ -512,6 +564,7 @@ void UGA_WarpMontageAttack::WarpTarget_TRACKING()
 	MWcomp->OnPreUpdate.AddDynamic(this, &UGA_WarpMontageAttack::OnMotionWarpUpdate);
 	FVector ActorLocation = Avatar->GetActorLocation();
 
+	UE_LOG(LogTemp, Warning, TEXT("Attacking start!"));
 	UAbilityTask_PlayMontageAndWait* MontageAttackTask =
 		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 			this,

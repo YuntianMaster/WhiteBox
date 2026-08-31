@@ -154,31 +154,39 @@ void UGA_GameAblilityBase::RunCoverEQS()
 
 	FEnvQueryRequest QueryRequest(QueryTemplate, GetAvatarActorFromActorInfo());
 	QueryRequest.Execute(
-		EEnvQueryRunMode::SingleResult,
+		EQSMode.GetValue(),
 		FQueryFinishedSignature::CreateUObject(this, &UGA_GameAblilityBase::OnEQSFinished)
 	);
 }
 
 void UGA_GameAblilityBase::OnEQSFinished(TSharedPtr<FEnvQueryResult> Result)
 {
+
+	
+	if (bIsNeedTargetCheck)
+	{
+		if(!EnemyAIRef->EnemyTargetActor)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("EQS failed"));
+			OnCoverEQSFailed();
+			EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
+			return;
+		}
+
+	}
+
+
 	if (!Result.IsValid() || !Result->IsSuccessful())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("EQS failed"));
 		OnCoverEQSFailed();
+		EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(),GetCurrentActivationInfo(), true, true);
 		return;
 	}
 
-	TArray<FVector> Locations;
-	Result->GetAllAsLocations(Locations);
-	if (!Locations.IsValidIndex(0))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("EQS returned no locations"));
-		OnCoverEQSFailed();
-		return;
-	}
 
-	EQSQueryLocation = Locations[0];
-	//UE_LOG(LogTemp, Warning, TEXT("EQSQueryLocation: %s"), *EQSQueryLocation.ToString());
+	EQSQueryLocation = Result->GetItemAsLocation(0);
+	UE_LOG(LogTemp, Warning, TEXT("EQSQueryLocation: %s"), *EQSQueryLocation.ToString());
 	OnCoverEQSFinished(EQSQueryLocation);
 }
 

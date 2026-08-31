@@ -7,6 +7,7 @@
 #include "Enum/EWeapon.h"
 #include "Enum/E_Gate.h"
 #include "Enum/EPlayerStates.h"
+#include "Structure/FAnimInstStruct.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "PlayerAnimInstance.generated.h"
 
@@ -62,6 +63,7 @@ public:
 	// Cached on game thread in NativeUpdateAnimation, read on worker thread.
 	FVector CachedOwnerVelocity;
 	FRotator CachedOwnerRotation;
+	bool bCachedIsFalling{ false };
 	/*UPROPERTY(BlueprintReadWrite)
 	TEnumAsByte<EWeapons> ECurrentWeapon;*/
 	UPROPERTY(BlueprintReadWrite)
@@ -123,5 +125,24 @@ public:
 	float FrameTurnYawCurveValue{ 0.f };
 	FString TurnYawCurveName{ "root_rotation_Z" };
 	FString IsTurningCurveName{ "IsTurning" };
+
+
+	//Bone Warping property
+	UPROPERTY(BlueprintReadWrite)
+	TMap<FName, FAnimInstStruct> BoneWarpMap;
+	UFUNCTION(BlueprintCallable, BlueprintPure, meta = (BlueprintThreadSafe))
+	FAnimInstStruct GetBoneWarpStruct(FName BoneName);
+
+
+
+	//Falling Check 
+	UPROPERTY(BlueprintReadOnly, Category = "Movement")
+	bool bShouldPlayFallingAnim = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float FallingEnterFloorDist = 100.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float FallingExitFloorDist = 40.f;
+
+	void UpdateFallingAnimState();
 };
 	

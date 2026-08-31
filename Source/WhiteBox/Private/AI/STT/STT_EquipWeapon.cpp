@@ -27,7 +27,7 @@ EStateTreeRunStatus USTT_EquipWeapon::EnterState(FStateTreeExecutionContext& Con
 				UE_LOG(LogTemp, Warning, TEXT("STT_Equip Weapon Complete!"));
 				FinishTask(true);
 			},
-			3.f,
+			WaitEquipTime,
 			false
 		);
 	}

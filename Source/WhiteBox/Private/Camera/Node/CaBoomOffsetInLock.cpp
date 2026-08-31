@@ -29,6 +29,7 @@ namespace UE::Cameras
 		TCameraParameterReader<float> MinPitchReader;
 		TCameraParameterReader<float> MaxPitchReader;
 		TCameraParameterReader<float> BoomZoomSpeedReader;
+		TCameraParameterReader<float> CenterToEnemy;
 		TCameraParameterReader<FVector3d> BoomOffsetReader;
 		TCameraParameterReader<FVector3d> TargetLocationReader;
 	};
@@ -63,6 +64,7 @@ namespace UE::Cameras
 		// 参数若被 Variable / Interface 驱动，.Value 可能是 0；default 在 Variable 上，需用 Reader。
 		MinPitchReader.Initialize(BoomOffsetNode->MinPitch);
 		MaxPitchReader.Initialize(BoomOffsetNode->MaxPitch);
+		CenterToEnemy.Initialize(BoomOffsetNode->CenterToEnemy);
 		BoomZoomSpeedReader.Initialize(BoomOffsetNode->BoomZoomSpeed);
 		BoomOffsetReader.Initialize(BoomOffsetNode->BoomOffset);
 		TargetLocationReader.Initialize(BoomOffsetNode->FocusTarget);
@@ -126,13 +128,13 @@ namespace UE::Cameras
 
 		const float MaxPitch = MaxPitchReader.Get(OutResult.VariableTable);
 		const float MinPitch = MinPitchReader.Get(OutResult.VariableTable);
-		
-		
+		const float float_CenterToEnemy = CenterToEnemy.Get(OutResult.VariableTable);
+		//UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockEvaluator::OnRun: CenterToEnemy : %f"), float_CenterToEnemy);
 
 		float Margin = BoomOffsetNode->FramingSize;
 		const FVector PlayerLocation = PlayerCharacter->GetActorLocation();
 		const FVector TargetLocation = TargetActor->GetActorLocation();
-		const FVector FocusLocation = UKismetMathLibrary::VLerp(PlayerLocation, TargetLocation, UKismetMathLibrary::FClamp(BoomOffsetNode->CenterWeightToEnemy, 0, 1));
+		const FVector FocusLocation = UKismetMathLibrary::VLerp(PlayerLocation, TargetLocation, UKismetMathLibrary::FClamp(float_CenterToEnemy, 0, 1));
 		//将摄像机的焦点位置存储到变量表中，以便其他节点或系统可以访问和使用这个焦点位置。
 		if (UVector3dCameraVariable* Var = BoomOffsetNode->FocusTarget.Variable)
 		{
@@ -140,7 +142,7 @@ namespace UE::Cameras
 		}
 		FRotator DesiredRot = UKismetMathLibrary::FindLookAtRotation(PlayerLocation, FocusLocation);
 
-		
+		UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockEvaluator::OnRun: FocusLocation : %s"), *FocusLocation.ToString());
 
 		bool bPitchAtLimit = DesiredRot.Pitch > MaxPitch ||
 			DesiredRot.Pitch< MinPitch;
@@ -272,21 +274,18 @@ namespace UE::Cameras
 
 		//获得当前Boom数值
 		FVector CurrentBoom = GetBoomArm(OutResult);
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentBoom: %s"), *CurrentBoom.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("CurrentBoom: %s"), *CurrentBoom.ToString());
 		//获得计算数值
 		FVector FinalBoomOffset = FVector(-Hi, BoomOffsetNode->BoomLatera, BoomOffsetNode->BoomHeight);
-		//UE_LOG(LogTemp, Warning, TEXT("FinalBoomOffset: %s"), *FinalBoomOffset.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("FinalBoomOffset: %s"), *FinalBoomOffset.ToString());
 		float BoomZoomSpeed = BoomZoomSpeedReader.Get(OutResult.VariableTable);
 		FinalBoomOffset = UKismetMathLibrary::VInterpTo_Constant(CurrentBoom, FinalBoomOffset, Params.DeltaTime, BoomZoomSpeed);
 		if (UVector3dCameraVariable* Var = BoomOffsetNode->BoomOffset.Variable)
 		{
 			OutResult.VariableTable.SetValue(Var, FinalBoomOffset);
 		}
-	}	
+	}
 
-
-	
-	
 } // namespace UE::Cameras
 
 FCameraNodeEvaluatorPtr UCaBoomOffsetInLock::OnBuildEvaluator(FCameraNodeEvaluatorBuilder& Builder) const

@@ -8,7 +8,9 @@
 #include "Combat/Weapon/WeaponGeneral.h"
 #include "Combat/WeaponSystemComp.h"
 
-void UGA_ThrowProjectile::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
+
+
+void UGA_ThrowProjectile::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
@@ -58,6 +60,8 @@ void UGA_ThrowProjectile::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 
 }
 
+
+//动画事件绑定
 void UGA_ThrowProjectile::RemoveWeaponHandle(FGameplayEventData Payload)
 {
 	UE_LOG(LogTemp,Warning, TEXT("RemoveWeaponHandle: %s!!"), *Payload.Instigator->GetName());
@@ -92,6 +96,7 @@ void UGA_ThrowProjectile::ThrowPrimeWeaponHandle(FGameplayEventData Payload)
 
 	FTransform WeaponSpawnTran = EnemyCharRef->GetComponentByClass<USkeletalMeshComponent>()->GetSocketTransform(WeaponStuctData.HandSocketName);
 	AGeneralProjectile_AI* ProjectileActor = Cast<AGeneralProjectile_AI>(GetWorld()->SpawnActor(WeaponStuctData.WeaponProjectile, &WeaponSpawnTran));
+	ProjectileActor->Montage_ID = MontageInstanceID;
 	ProjectileActor->SetInstigator(EnemyCharRef);
 	ProjectileActor->bIsUp = bPrimeUp;
 	ProjectileActor->bIsRight = bPrimeRight;
@@ -113,6 +118,7 @@ void UGA_ThrowProjectile::ThrowSecondWeaponHandle(FGameplayEventData Payload)
 
 	FTransform WeaponSpawnTran = EnemyCharRef->GetComponentByClass<USkeletalMeshComponent>()->GetSocketTransform(WeaponStuctData.HandSocketName);
 	AGeneralProjectile_AI* ProjectileActor = Cast<AGeneralProjectile_AI>(GetWorld()->SpawnActor(WeaponStuctData.WeaponProjectile, &WeaponSpawnTran));
+	ProjectileActor->Montage_ID = MontageInstanceID;
 	ProjectileActor->SetInstigator(EnemyCharRef);
 	ProjectileActor->bIsUp = bSecondUp;
 	ProjectileActor->bIsRight = bSecondRight;
@@ -138,3 +144,4 @@ void UGA_ThrowProjectile::ShowWeaponHandle(FGameplayEventData Payload)
 	}
 }
 
+//复写播放Montage

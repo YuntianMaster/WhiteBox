@@ -1,20 +1,20 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Core/CameraNode.h"
 #include "Core/CameraParameters.h"
-#include "CaBoomOffsetInLock.generated.h"
+#include "CaBoomOffsetInLockOffsetTarget.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class WHITEBOX_API UCaBoomOffsetInLock : public UCameraNode
+class WHITEBOX_API UCaBoomOffsetInLockOffsetTarget : public UCameraNode
 {
 	GENERATED_BODY()
-public:	
+public:
 
 	UPROPERTY(EditAnywhere, Category = "CameraVaraiable")
 	FFloatCameraParameter  MinPitch;
@@ -35,11 +35,11 @@ public:
 	FVector3dCameraParameter  FocusTarget;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
-	float FramingSize = 0.8f;     
+	float FramingSize = 0.8f;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
 	float PitchLimitMarginScale = 0.85f;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
-	float MinBoomLength = 300.f;  
+	float MinBoomLength = 300.f;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
 	float MaxBoomLength = 1500.f;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
@@ -53,8 +53,13 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
 	float EnemyHalfHeight = 90.f;
 
-	const float ScreenMargin = 0.75f; // ��ֱ���� FramingSize
+	const float ScreenMargin = 0.75f; // FramingSize
+
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bIsDebug{ false };
 
 protected:
 	virtual FCameraNodeEvaluatorPtr OnBuildEvaluator(FCameraNodeEvaluatorBuilder& Builder) const override;
+
 };

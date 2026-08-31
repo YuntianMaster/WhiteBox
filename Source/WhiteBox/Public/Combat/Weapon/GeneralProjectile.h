@@ -32,6 +32,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float DamageMagnitude = 10.f;
 
+	int32 Montage_ID;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
