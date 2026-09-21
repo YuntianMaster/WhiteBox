@@ -27,6 +27,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StateTreeComponent.h"
+#include "Player/QTESystemComp.h"
 #include "TimerManager.h"
 
 
@@ -56,6 +57,7 @@ APlayerCharacter::APlayerCharacter()
 	GCC_Camera = CreateDefaultSubobject<UGameplayCameraComponent>(TEXT("GCC_Camera"));
 	GCC_Camera->SetupAttachment(GetCapsuleComponent());
 	StateTreeComp = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComp"));
+	QTESystemp = CreateDefaultSubobject<UQTESystemComp>(TEXT("QTE_SYS"));
 }
 
 UAbilitySystemComponent* APlayerCharacter::GetAbilitySystemComponent() const
@@ -134,6 +136,41 @@ void APlayerCharacter::OnPoiseMaxTagChange(const FGameplayTag Callbacktage, int3
 
 }
 
+void APlayerCharacter::OnKnockedDownTagChange(const FGameplayTag Callbacktage, int32 NewCount)
+{
+	if (NewCount > 0)
+	{
+
+		GetWorld()->GetTimerManager().SetTimer(
+			OnKnockDownWaitPlayerOnGround,
+			this,
+			&APlayerCharacter::OnKnockDownWaitPlayerOnGroundHandle,
+			GetWorld()->DeltaTimeSeconds,
+			true
+		);
+		PlayerStats = EPlayerStates::KnockedDown;
+	
+	}
+	if (NewCount <= 0)
+	{
+		PlayerStats = EPlayerStates::CharacterNoneStats;
+		UpdateGate(E_Gate::Walking);
+
+	}
+
+}
+
+
+void APlayerCharacter::OnKnockDownWaitPlayerOnGroundHandle()
+{
+	if(GetCharacterMovement()->IsMovingOnGround())
+	{
+
+		//UE_LOG(LogTemp, Warning, TEXT("APlayerCharacter IS Ground"));
+		GetCharacterMovement()->StopMovementImmediately();
+		GetCharacterMovement()->MaxWalkSpeed = 0; 
+	}
+}
 
 
 float APlayerCharacter::OnHandleDeath()
@@ -177,6 +214,7 @@ void APlayerCharacter::BeginPlay()
 	RegisterTagEvent(TEXT("Stats.Drawing"), &APlayerCharacter::OnDrawingTagChange);
 	RegisterTagEvent(TEXT("Stats.Parrying"), &APlayerCharacter::OnParryingTagChange);
 	RegisterTagEvent(TEXT("Stats.PoiseMax"), &APlayerCharacter::OnPoiseMaxTagChange);
+	RegisterTagEvent(TEXT("Stats.KnockedDown"), &APlayerCharacter::OnKnockedDownTagChange);
 
 	for (TSubclassOf<UGameplayAbility> ablility : InitalAbilities)
 	{
@@ -207,6 +245,7 @@ void APlayerCharacter::OnRep_PlayerState()
 
 	
 }
+
 
 // Called every frame
 void APlayerCharacter::Tick(float DeltaTime)

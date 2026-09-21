@@ -6,6 +6,7 @@
 #include "Camera/CameraComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "NiagaraComponent.h"
+#include "NiagaraSystem.h"
 #include "Props/PickUpActor.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Interface/Damageable.h"
@@ -23,11 +24,18 @@ AGeneralProjectile::AGeneralProjectile()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	USceneComponent* SceneComp = CreateDefaultSubobject<USceneComponent>(TEXT("SceneComp"));
+	SetRootComponent(SceneComp);
+	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
+	MeshComp->SetupAttachment(RootComponent);
 	ProjectileMoveComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("MovementComp"));
 	AbilitySysComp = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySysComp"));
 	BasicAttributeSet = CreateDefaultSubobject<UBasicAttributeSet>(TEXT("BasicAttributeSet"));
 	CombatAttributeSet = CreateDefaultSubobject<UCombatAttributeSet>(TEXT("CombatAttributeSet"));
-
+	//NiagaraComp = CreateDefaultSubobject<UNiagaraComponent>(TEXT("NiagaraComp"));
+	//NiagaraComp->SetupAttachment(MeshComp);
+	//// 由 Fire 手动激活；避免 BP AutoActivate 覆盖后在 BeginPlay 被关掉又起不来
+	//NiagaraComp->SetAutoActivate(false);
 
 	// 避免高速子弹穿透：启用子步进，提高模拟精度
 	if (ProjectileMoveComp)
@@ -178,8 +186,29 @@ void AGeneralProjectile::Fire(float CharingTime)
 	ProjectileMoveComp->InitialSpeed = ProjectileSpeed;
 	ProjectileMoveComp->MaxSpeed = ProjectileSpeed;
 	ProjectileMoveComp->Velocity = ArrowDirection * ProjectileSpeed;
-	if(NiagaraComp)
-		NiagaraComp->Activate();
+	ActivateProjectileNiagara();
+}
+
+void AGeneralProjectile::ActivateProjectileNiagara()
+{
+	if (!NiagaraComp)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: NiagaraComp is null"), *GetName());
+		return;
+	}
+
+	UNiagaraSystem* Asset = NiagaraComp->GetAsset();
+	if (!Asset)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s: NiagaraComp has no asset"), *GetName());
+		return;
+	}
+
+	// 关键：强制走 SetAsset，重建 Instance Parameter Store（C++ 组件在 BP 里只赋 Asset 时经常缺这步）
+	NiagaraComp->SetAsset(Asset);
+	NiagaraComp->SetVisibility(true);
+	NiagaraComp->SetHiddenInGame(false);
+	NiagaraComp->Activate(true);
 }
 
 void AGeneralProjectile::OnHitHandle(AActor* HitObject)

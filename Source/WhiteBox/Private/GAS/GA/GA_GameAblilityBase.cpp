@@ -19,6 +19,7 @@ UGA_GameAblilityBase::UGA_GameAblilityBase()
 	CharRef = nullptr;
 	AnimInstance = nullptr;
 
+	ActivationBlockedTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Stats.KnockedDown")));
 
 }
 
@@ -195,7 +196,7 @@ void UGA_GameAblilityBase::ApplyGEToSelf(FGameplayTag DataTag)
 	UAbilitySystemComponent* OwnerASC = GetAvatarActorFromActorInfo()->GetComponentByClass<UAbilitySystemComponent>();	
 	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
 	Context.AddSourceObject(GetAvatarActorFromActorInfo());
-
+	Context.AddInstigator(GetAvatarActorFromActorInfo(), GetAvatarActorFromActorInfo());
 	FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(GE_Self, GE_Self_Lv, Context);
 	if (!SpecHandle.IsValid()) {
 		UE_LOG(LogTemp, Warning, TEXT("SpecHandle is not working"));
@@ -226,6 +227,31 @@ void UGA_GameAblilityBase::ApplyGEToAttacker(FGameplayEventData Playload, FGamep
 		OwnerASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), AttackerASC);
 	else
 		UE_LOG(LogTemp, Warning, TEXT("Attack ASC is not working"));
+}
+
+void UGA_GameAblilityBase::ApplyGEToTarget(FGameplayTag DataTag)
+{
+	AActor* Target = bIsEnemyAbility ? EnemyAIRef->EnemyTargetActor : CharRef->TargetActor;
+	
+	if (!Target)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UGA_GameAblilityBase::ApplyGEToTarget: TargetActor is not exist"));
+		return;
+	}
+
+
+	
+	UAbilitySystemComponent* TargetASC = Target->GetComponentByClass<UAbilitySystemComponent>();
+	FGameplayEffectContextHandle Context = TargetASC->MakeEffectContext();
+	Context.AddSourceObject(GetAvatarActorFromActorInfo());
+	FGameplayEffectSpecHandle SpecHandle = TargetASC->MakeOutgoingSpec(GE_ToTarget, GE_ToTarget_Lv, Context);
+	if (!SpecHandle.IsValid()) {
+		UE_LOG(LogTemp, Warning, TEXT("SpecHandle is not working"));
+		return;
+	}
+	SpecHandle.Data->SetByCallerTagMagnitudes.Add(DataTag, GE_ToTarget_Magnitude);
+	TargetASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
+
 }
 
 

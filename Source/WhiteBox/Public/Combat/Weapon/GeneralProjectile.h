@@ -20,7 +20,8 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	class UProjectileMovementComponent* ProjectileMoveComp;
 	ACharacter* Char;
-
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UStaticMeshComponent* MeshComp;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	class UAbilitySystemComponent* AbilitySysComp;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -57,6 +58,8 @@ public:
 	float MinGravity{ 0.5f };
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	class UNiagaraComponent* NiagaraComp;
+	/** 重建 C++ Niagara 组件的参数库并激活（与 WeaponGeneral::SetAsset 同理） */
+	void ActivateProjectileNiagara();
 	virtual void Fire(float CharingTime) ;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TSubclassOf<APickUpActor> PickUpActor;

@@ -51,6 +51,7 @@ public:
 	void OnDrawingTagChange(const FGameplayTag Callbacktage, int32 NewCount);
 	void OnParryingTagChange(const FGameplayTag Callbacktage, int32 NewCount);
 	void OnPoiseMaxTagChange(const FGameplayTag Callbacktage, int32 NewCount);
+	void OnKnockedDownTagChange(const FGameplayTag Callbacktage, int32 NewCount);
 	
 	UPROPERTY(BlueprintReadOnly)
 	class UPlayerAnimInstance* PlayerAnim;
@@ -84,6 +85,8 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	class UCamerManagerComponent* CameraManager;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UQTESystemComp* QTESystemp;
 	UFUNCTION()
 	virtual float OnHandleDeath() override;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -115,6 +118,8 @@ protected:
 	virtual void OnRep_PlayerState() override;
 
 
+	FTimerHandle OnKnockDownWaitPlayerOnGround;
+	void OnKnockDownWaitPlayerOnGroundHandle();
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

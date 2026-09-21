@@ -35,6 +35,9 @@ namespace UE::Cameras {
 		TCameraParameterReader<FVector3d> TargetLocationReader;
 
 		FVector InitialActorLoc;
+		FVector InitialTargetLoc;
+		FTransform InitialPlayerTran;
+		FRotator InitialCameraRot;
 
 	};
 
@@ -75,23 +78,17 @@ namespace UE::Cameras {
 		float Margin = CaBoomOffsetInLockOffsetTargetNode->FramingSize;
 		const FVector CurrentTargetLoc = TargetActor->GetActorLocation();
 
+		
 		const FVector FocusEnemyLocation = UKismetMathLibrary::VLerp(PlayerCharacter->GetActorLocation(), CurrentTargetLoc, float_CenterToEnemy);
-		const FVector FocusLocation = UKismetMathLibrary::VLerp(InitialActorLoc, FocusEnemyLocation, UKismetMathLibrary::FClamp(CaBoomOffsetInLockOffsetTargetNode->CenterWeightToEnemy, 0, 1));
-		const FVector PlayerLocation = PlayerCharacter->GetActorLocation();
+		const FVector FocusLocation = UKismetMathLibrary::VLerp(InitialTargetLoc, FocusEnemyLocation, float_CenterToEnemy);
 
 
+	
 
-		if (CaBoomOffsetInLockOffsetTargetNode->bIsDebug)
-
-			UKismetSystemLibrary::DrawDebugSphere(
-				TargetActor->GetWorld(),
-				FocusLocation,
-				20.f,
-				12,
-				FLinearColor::Red,
-				0.5f,
-				5.f
-			);
+		const FVector PlayerLocation = OwnerActor->GetActorLocation();
+		FRotator CurrentCameraRot = OutResult.CameraPose.GetRotation();
+		OutResult.CameraPose.SetRotation(FRotator(CurrentCameraRot.Pitch,InitialCameraRot.Yaw,0.f));
+	
 
 		if (UVector3dCameraVariable* Var = CaBoomOffsetInLockOffsetTargetNode->FocusTarget.Variable)
 		{
@@ -99,7 +96,7 @@ namespace UE::Cameras {
 
 		}
 
-		UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockOffsetTargetEvaluator::OnRun: FocusLocation is %s"), *FocusLocation.ToString());
+		//UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockOffsetTargetEvaluator::OnRun: FocusLocation is %s"), *FocusLocation.ToString());
 
 		FRotator DesiredRot = UKismetMathLibrary::FindLookAtRotation(PlayerLocation, FocusLocation);
 		bool bPitchAtLimit = DesiredRot.Pitch > MaxPitch ||
@@ -219,7 +216,13 @@ namespace UE::Cameras {
 		//UE_LOG(LogTemp, Warning, TEXT("CurrentBoom: %s"), *CurrentBoom.ToString());
 		//????????
 		FVector FinalBoomOffset = FVector(-Hi, CaBoomOffsetInLockOffsetTargetNode->BoomLatera, CaBoomOffsetInLockOffsetTargetNode->BoomHeight);
-		//UE_LOG(LogTemp, Warning, TEXT("FinalBoomOffset: %s"), *FinalBoomOffset.ToString());
+
+
+		UE_LOG(LogTemp, Warning, TEXT("PlayerLocation: %s"), *PlayerLocation.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("CurrentTargetLoc: %s"), *CurrentTargetLoc.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("FocusLocation: %s"), *FocusLocation.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("FinalBoomOffset: %s"), *FinalBoomOffset.ToString());
+
 		float BoomZoomSpeed = BoomZoomSpeedReader.Get(OutResult.VariableTable);
 		FinalBoomOffset = UKismetMathLibrary::VInterpTo_Constant(CurrentBoom, FinalBoomOffset, Params.DeltaTime, BoomZoomSpeed);
 		if (UVector3dCameraVariable* Var = CaBoomOffsetInLockOffsetTargetNode->BoomOffset.Variable)
@@ -235,12 +238,14 @@ namespace UE::Cameras {
 	void FCaBoomOffsetInLockOffsetTargetEvaluator::OnInitialize(const FCameraNodeEvaluatorInitializeParams& Params, FCameraNodeEvaluationResult& OutResult)
 	{
 		const UCaBoomOffsetInLockOffsetTarget* CaBoomOffsetInLockOffsetTargetNode = GetCameraNodeAs<UCaBoomOffsetInLockOffsetTarget>();
-
+		
 		BoomOffsetReader.Initialize(CaBoomOffsetInLockOffsetTargetNode->BoomOffset);
 		if (UVector3dCameraVariable* Var = CaBoomOffsetInLockOffsetTargetNode->BoomOffset.Variable)
 		{
 			if (const FCameraNodeEvaluationResult* LastResult = Params.LastActiveCameraRigInfo.LastResult)
 			{
+
+				InitialCameraRot = LastResult->CameraPose.GetRotation();
 				FVector3d InitialBoom;
 				if (LastResult->VariableTable.TryGetValue(Var, InitialBoom))
 				{
@@ -289,8 +294,9 @@ namespace UE::Cameras {
 
 		if (AActor* TargetActor = PlayerCharacter->TargetActor)
 		{
-			InitialActorLoc = TargetActor->GetActorLocation();
-			UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockOffsetTargetEvaluator::OnInitialize: InitialActorLoc: %s"), *InitialActorLoc.ToString());
+			InitialTargetLoc = TargetActor->GetActorLocation();
+			InitialPlayerTran = TargetActor->GetActorTransform();
+			UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockOffsetTargetEvaluator::OnInitialize: InitialTargetLoc: %s"), *InitialTargetLoc.ToString());
 
 			if(CaBoomOffsetInLockOffsetTargetNode->bIsDebug)
 			{
@@ -301,7 +307,7 @@ namespace UE::Cameras {
 					20.f,
 					12,
 					FLinearColor::Green,
-					0,
+					-1,
 					5.f
 				);
 			}

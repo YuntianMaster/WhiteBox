@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "GAS/GA/GA_GameAblilityBase.h"
 #include "EnvironmentQuery/EnvQueryTypes.h"
+#include "Structure/FCameraArmStruct.h"
+#include "Player/CamerManagerComponent.h"
 #include "GA_WarpMontageAttack.generated.h"
 
 /**
@@ -52,6 +54,7 @@ protected:
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnTraceSuccessBroadCast();
+	
 		
 protected:
 
@@ -108,6 +111,20 @@ protected:
 	FVector WarpOffset;
 
 	bool bEndWarpStarted = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SpecialHitReaction")
+	bool bIsSpecialHitReaction{ false };
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "SpecialHitReaction"), Category = "SpecialHitReaction")
+	UAnimMontage* SpeicalHitReactionMontage;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "SpecialHitReaction"), Category = "SpecialHitReaction")
+	FCameraArmStruct ArmValue;
+	void SpicalHitReactionMontageHandle();
+	UFUNCTION(BlueprintImplementableEvent)
+	void SpicalHitSuccessBroadCast();
+
+	AActor* GA_TargetActor;
+
+
 public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float DamageMagnitude;

@@ -31,6 +31,7 @@ public:
 	UFUNCTION()
 	void UpdateIcon();
 	void StopUpdateIcon(const FGameplayEffectRemovalInfo& RemovalInfo);
+	
 protected:
 	
 	virtual void NativeConstruct() override;

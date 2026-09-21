@@ -7,9 +7,22 @@
 #include "Core/CameraVariableReferences.h"
 #include "GameFramework/BlueprintCameraVariableTable.h"
 #include "GameplayTagContainer.h"
+#include "Enum/E_Camera.h"
+#include "Core/CameraEvaluationContext.h"
+#include "Core/CameraNodeEvaluator.h"
+#include "Structure/FCameraArmStruct.h"
 #include "CamerManagerComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCameraChangeSignature, FGameplayTag, Tag);
+DECLARE_MULTICAST_DELEGATE_OneParam(
+	FOnCameraLockModeChangeSignature, 
+	E_LockCameraMode /*CameraLockMode*/
+	);
+
+DECLARE_MULTICAST_DELEGATE_OneParam(
+	FOnCameraBoomArmValueChangeSignature,
+	FCameraArmStruct /*ArmStruct*/
+);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class WHITEBOX_API UCamerManagerComponent : public UActorComponent
@@ -19,7 +32,7 @@ class WHITEBOX_API UCamerManagerComponent : public UActorComponent
 public:	
 	// Sets default values for this component's properties
 	UCamerManagerComponent();
-
+	
 	/** 切换 Rig 前写入 Evaluation Context 的 Initial Pose，供 Entry Transition 的 Context Yaw Pitch 读取。 */
 	void SetInitialCameraPose();
 	//UFUNCTION(BlueprintCallable)
@@ -27,10 +40,18 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void CameraChangeHandle(UPARAM(meta = (Categories = "Camera")) FGameplayTag CameraTag);
+	UFUNCTION(BlueprintCallable)
+	void CameraModeChangeHandle(UPARAM(meta = (Categories = "Camera")) E_LockCameraMode CameraLockMode);
+	UFUNCTION(BlueprintCallable)
+	void CameraBoomArmValueChangeHandle(FCameraArmStruct ArmStruct);
+
+public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FGameplayTag CurrentCameraTag;
 	UPROPERTY(BlueprintAssignable)
 	FOnCameraChangeSignature FOnCameraChangeDelegate;
+	FOnCameraLockModeChangeSignature FOnCameraLockModeChangeDelegate;
+	FOnCameraBoomArmValueChangeSignature FOnCameraBoomArmValueChangeDelegate;
 	UPROPERTY(BlueprintReadWrite)
 	FVector BoomOffset;
 
@@ -48,23 +69,10 @@ public:
 
 	FBlueprintCameraVariableTable Table;
 
-	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
-	//float FramingSize = 0.8f;     // 包围盒占屏比例，1=贴边
-	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
-	//float MinBoomLength = 300.f;  // 正数：臂长（世界距离）
-	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
-	//float MaxBoomLength = 1500.f;
-	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
-	//float BoomHeight = 50.f;      // BoomOffset.Z
-	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
-	//float BoomLateral = 0.f;      // BoomOffset.Y
-	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
-	//float CenterWeightToEnemy = 0.5f;
-	//
-	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
-	//float PlayerHalfHeight = 90.f;
-	//UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
-	//float EnemyHalfHeight = 90.f;
+	UPROPERTY(BlueprintReadWrite)
+	TEnumAsByte<E_LockCameraMode> CurrentCameraLockMode{E_LockCameraMode::LockTarget};
+	
+	
 
 
 

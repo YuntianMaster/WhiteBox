@@ -14,6 +14,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Structure/FGASStucts.h"
 #include "GAS/Task/AbilityTask_Tick.h"
+#include "Player/CamerManagerComponent.h"
+#include "Player/PlayerCharacter.h"
+#include "Kismet/GameplayStatics.h"
 #include "EnvironmentQuery/EnvQueryManager.h"
 
 namespace WarpMontageAttack_Private
@@ -212,6 +215,9 @@ void UGA_WarpMontageAttack::ActivateAbility(const FGameplayAbilitySpecHandle Han
 	// WarpMontageHandler may still need a ground check; flying first makes IsMovingOnGround always false.
 
 	//接收TraceComp的碰撞结果
+
+	GA_TargetActor = bIsEnemyAbility ? EnemyAIRef->EnemyTargetActor : CharRef->TargetActor;
+
 	UAbilityTask_WaitGameplayEvent* TraceHitSuccess = 
 		UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(this,FGameplayTag::RequestGameplayTag("Event.Combat.TraceHitSucess"));
 
@@ -233,6 +239,20 @@ void UGA_WarpMontageAttack::OnTraceHitHandle(FGameplayEventData Payload)
 
 	OnTraceSuccessBroadCast();
 	
+
+
+
+	if (bIsSpecialHitReaction)
+
+	{
+		SpicalHitReactionMontageHandle();
+		return;
+
+	}
+
+
+
+
 	const FTraceMontageID* Data =
 		static_cast<const FTraceMontageID*>(Payload.TargetData.Get(0));
 	Payload.EventMagnitude = DamageMagnitude;
@@ -254,6 +274,7 @@ void UGA_WarpMontageAttack::OnTraceHitHandle(FGameplayEventData Payload)
 		
 }
 
+
 void UGA_WarpMontageAttack::UpdatePlayeRate(float DeltaTime)
 {
 	ACharacter* ActorChar = Cast<ACharacter>(GetAvatarActorFromActorInfo());
@@ -263,19 +284,110 @@ void UGA_WarpMontageAttack::UpdatePlayeRate(float DeltaTime)
 		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::UpdatePlayeRate: Montage is not playing"));
 		return;
 	}
-
+	float FinalRate = PlayRate;
 	if (!AttackMontage->HasCurveData(PlayRateCurve)) {
 
 		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::UpdatePlayeRate: PlayRateCurve is not exist"));
 		return;
+		
 	}
-	
+
 	float Rate = AnimInst->GetCurveValue(PlayRateCurve);
-	UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::UpdatePlayeRate: PlayRateCurve value : %f"), Rate);
-	Rate *= PlayRate;
-	AnimInst->Montage_SetPlayRate(AttackMontage, Rate);
+	FinalRate *= Rate;
+	
+	//UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::UpdatePlayeRate: PlayRateCurve value : %f"), Rate);
+	
+	AnimInst->Montage_SetPlayRate(AttackMontage, FinalRate);
+
+	AActor* TargetActor = GA_TargetActor;
+	ACharacter* TargetChar = Cast<ACharacter>(TargetActor);
+
+	if (!TargetChar)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack: TargetChar is not found"));
+		return;
+
+	}
+	UAnimInstance* TargetAnimInst = TargetChar->GetMesh()->GetAnimInstance();
+	if (!TargetAnimInst)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack: TargetAnimInst is not found"));
+		return;
+
+
+	}
+	if (bIsSpecialHitReaction&& TargetAnimInst) {
+
+		TargetAnimInst->Montage_SetPlayRate(SpeicalHitReactionMontage, FinalRate);
+
+	}
 
 }
+
+void UGA_WarpMontageAttack::SpicalHitReactionMontageHandle()
+{
+	SpicalHitSuccessBroadCast();
+	AActor* Avatar = GetAvatarActorFromActorInfo();
+	if (bIsEnemyAbility)
+	{
+		
+		if (!EnemyAIRef)
+		{
+
+			UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack: EnemyAIRef is not found"));
+			return;
+		}
+
+		AActor* TargetActor = EnemyAIRef->EnemyTargetActor;
+		if (!TargetActor)
+		{
+
+			UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack: Enemy No Target"));
+			return;
+		}
+		ACharacter* ActorChar = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+		UAnimInstance* AnimInst = ActorChar->GetMesh()->GetAnimInstance();
+		float Time = AnimInst->Montage_GetPosition(AttackMontage);
+
+		TargetActor->GetComponentByClass<USkeletalMeshComponent>()->GetAnimInstance()->Montage_Play(
+			SpeicalHitReactionMontage,
+			1.f,
+			EMontagePlayReturnType::Duration,
+			Time,
+			true
+		);
+		UE_LOG(LogTemp, Warning, TEXT("UMC"));
+		UCamerManagerComponent* UMC = TargetActor->GetComponentByClass<UCamerManagerComponent>();
+		UMC->CameraBoomArmValueChangeHandle(ArmValue);
+	}
+	else {
+		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack: Player SpicalHitReactionMontageHandle"));
+		AActor* TargetActor = CharRef->TargetActor;
+		if (!TargetActor)
+		{
+
+			UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack: Player No Target"));
+			return;
+		}
+
+		UAnimInstance* AnimInst = CharRef->GetMesh()->GetAnimInstance();
+		float Time = AnimInst->Montage_GetPosition(AttackMontage);
+
+		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack: Player Time: %f"), Time);
+		TargetActor->GetComponentByClass<USkeletalMeshComponent>()->GetAnimInstance()->Montage_Play(
+			SpeicalHitReactionMontage,
+			1.f,
+			EMontagePlayReturnType::Duration,
+			Time,
+			true
+		);
+		UCamerManagerComponent* UMC = CharRef->CameraManager;
+		UMC->CameraBoomArmValueChangeHandle(ArmValue);
+	}
+	
+}
+
+
 
 
 void UGA_WarpMontageAttack::OnAttackCompleted()
@@ -371,7 +483,7 @@ void UGA_WarpMontageAttack::WarpTarget_NOTRACKING()
 	}
 
 
-	AActor* TargetActor = EnemyAIRef->EnemyTargetActor;
+	AActor* TargetActor = GA_TargetActor;
 	if (!TargetActor)
 	{
 
@@ -490,18 +602,12 @@ void UGA_WarpMontageAttack::EndMovementModeChangeHandle()
 void UGA_WarpMontageAttack::OnMotionWarpUpdate(UMotionWarpingComponent* UWC)
 {
 	AActor* Avatar = GetAvatarActorFromActorInfo();
-	if (!EnemyAIRef)
-	{
 
-		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack: EnemyAIRef is not found"));
-		return;
-	}
-
-	AActor* TargetActor = EnemyAIRef->EnemyTargetActor;
+	AActor* TargetActor = GA_TargetActor;
 	if (!TargetActor)
 	{
 
-		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack: Enemy No Target"));
+		UE_LOG(LogTemp, Warning, TEXT("GA_TargetActor:  No Target"));
 		return;
 	}
 
@@ -514,7 +620,7 @@ void UGA_WarpMontageAttack::OnMotionWarpUpdate(UMotionWarpingComponent* UWC)
 	FRotator WarpRot = (-Directon).Rotation();
 	WarpRot.Roll = 0;
 	WarpRot.Pitch = 0;
-	UE_LOG(LogTemp, Warning, TEXT("WarpLoc: %s!"),*WarpLoc.ToString());
+	//UE_LOG(LogTemp, Warning, TEXT("WarpLoc: %s!"),*WarpLoc.ToString());
 
 	UWC->AddOrUpdateWarpTargetFromLocationAndRotation(
 		AttackWarpingName,

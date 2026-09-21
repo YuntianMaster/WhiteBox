@@ -69,6 +69,24 @@ void UCamerManagerComponent::CameraChangeHandle(UPARAM(meta = (Categories = "Cam
 			
 }
 
+void UCamerManagerComponent::CameraModeChangeHandle(UPARAM(meta = (Categories = "Camera")) E_LockCameraMode CameraLockMode)
+{
+	if (CurrentCameraLockMode == CameraLockMode)
+		return;
+
+	CurrentCameraLockMode = CameraLockMode;
+	FOnCameraLockModeChangeDelegate.Broadcast(CameraLockMode);
+
+}
+
+void UCamerManagerComponent::CameraBoomArmValueChangeHandle(FCameraArmStruct ArmStruct)
+{
+	FOnCameraBoomArmValueChangeDelegate.Broadcast(ArmStruct);
+	UE_LOG(LogTemp, Error, TEXT("UCamerManagerComponent::CameraBoomArmValueChangeHandle: %f"), ArmStruct.BoomHeight);
+}
+
+
+
 
 void UCamerManagerComponent::BeginPlay()
 {

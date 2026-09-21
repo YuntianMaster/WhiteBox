@@ -15,6 +15,11 @@ class WHITEBOX_API UCameraLockYawPitch : public UInput2DCameraNode
 
 public:
 
+	UPROPERTY(EditAnywhere, Category = "CameraVaraiable")
+	FVector3dCameraParameter  FocusTarget;
+
+
+
 	UPROPERTY(EditAnywhere, Category = "Camera|Lock")
 	float TargetHeightOffset = 100.f;
 

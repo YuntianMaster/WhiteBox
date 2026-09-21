@@ -7,11 +7,21 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitDelay.h"
+#include "AbilitySystemComponent.h"
 #include "GameFramework/Character.h"
 
 void UGA_RollAbility::GA_Roll()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Rolling"));
+
+
+
+
+
+
+
+
+
 	CharacterRef = Cast<ACharacter>(GetAvatarActorFromActorInfo());
 	FVector RollDirection{
 		
@@ -265,6 +275,7 @@ void UGA_RollAbility::GA_Roll()
 	RollIndex++;
 	
 
+
 	CharacterRef->GetWorldTimerManager().ClearTimer(RollFinishTimeHandler);
 	CharacterRef->GetWorldTimerManager().SetTimer(
 		RollFinishTimeHandler,
@@ -273,6 +284,33 @@ void UGA_RollAbility::GA_Roll()
 		Duration + 0.5f,
 		false
 	);
+	//完美闪避施加
+	UAbilitySystemComponent* OwnerASC = GetAvatarActorFromActorInfo()->GetComponentByClass<UAbilitySystemComponent>();
+	FGameplayEffectContextHandle PerfectContext = OwnerASC->MakeEffectContext();
+	PerfectContext.AddSourceObject(GetAvatarActorFromActorInfo());
+	PerfectContext.AddInstigator(GetAvatarActorFromActorInfo(), GetAvatarActorFromActorInfo());
+	FGameplayEffectSpecHandle PerfectSpecHandle = OwnerASC->MakeOutgoingSpec(GE_PerfectDodge, 1, PerfectContext);
+	if (!PerfectSpecHandle.IsValid()) {
+		UE_LOG(LogTemp, Warning, TEXT("PerfectContext SpecHandle is not working"));
+		return;
+	}
+	PerfectSpecHandle.Data->SetByCallerTagMagnitudes.Add(FGameplayTag::RequestGameplayTag("Stats.PerfectDodge"), PerfectDodgeMagnitude);
+	PerfectDodgeHandle = OwnerASC->ApplyGameplayEffectSpecToTarget(*PerfectSpecHandle.Data.Get(), OwnerASC);
+
+	//普通闪避施加
+	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
+	Context.AddSourceObject(GetAvatarActorFromActorInfo());
+	Context.AddInstigator(GetAvatarActorFromActorInfo(), GetAvatarActorFromActorInfo());
+	FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(GE_Dodge, 1, Context);
+	if (!SpecHandle.IsValid()) {
+		UE_LOG(LogTemp, Warning, TEXT("Context SpecHandle is not working"));
+		return;
+	}
+	NormalDodgeMagnitude = Duration;
+	SpecHandle.Data->SetByCallerTagMagnitudes.Add(FGameplayTag::RequestGameplayTag("Stats.Dodge"), NormalDodgeMagnitude);
+	DodgeHandle =  OwnerASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), OwnerASC);
+
+	
 
 }
 
@@ -297,4 +335,37 @@ void UGA_RollAbility::ResetMeshDirection()
 	CharacterRef->GetMesh()->SetRelativeRotation(FRotator(0, -90, 0));
 	EROLLDir = ERollDirection::NOINPUT;
 
+	if (UAbilitySystemComponent* OwnerASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		FGameplayTagContainer DodgeTags;
+		DodgeTags.AddTag(FGameplayTag::RequestGameplayTag("GamePlayAbility.Combat.Dodge"));
+		OwnerASC->CancelAbilities(&DodgeTags, nullptr, this);
+	}
+
+}
+
+void UGA_RollAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	if(UAbilitySystemComponent * OwnerASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		if (DodgeHandle.IsValid())
+		{
+			OwnerASC->RemoveActiveGameplayEffect(DodgeHandle, -1);
+			DodgeHandle.Invalidate();
+			DodgeHandle.Invalidate();
+		}
+
+		if (PerfectDodgeHandle.IsValid())
+		{
+			OwnerASC->RemoveActiveGameplayEffect(PerfectDodgeHandle, -1);
+			PerfectDodgeHandle.Invalidate();
+			PerfectDodgeHandle.Invalidate();
+		}
+	
+	}
+
+	
+
+	
+	Super::EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
 }

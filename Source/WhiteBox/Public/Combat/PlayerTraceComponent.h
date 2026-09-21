@@ -49,8 +49,7 @@ protected:
 			FVector End = FVector::ZeroVector;
 			bool isVaild = false;
 	};
-	TMap<uint32, FPrevSocketPair> PrevSocketPairs;
-	TArray<AActor*> TargetsToIngore;
+	
 	
 public:	
 	// Called every frame
@@ -60,7 +59,8 @@ public:
 	void HandleResestAttack();
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TArray<FTraceSockets> TraceSockets;
-
+	TMap<uint32, FPrevSocketPair> PrevSocketPairs;
+	TArray<AActor*> TargetsToIngore;
 
 
 		

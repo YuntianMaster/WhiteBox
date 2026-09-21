@@ -20,7 +20,7 @@ void AGeneralProjectile_AI::Fire(float CharingTime)
 		FVector OwnerLocation = OwnerC->GetActorLocation();
 		FVector Forward = (TargetLocation - OwnerLocation).GetSafeNormal();
 		FVector Side = FVector::CrossProduct(FVector::UpVector, Forward).GetSafeNormal();
-		// 2) 若几乎竖直瞄准，Cross 会接近 0，换参考轴
+		// 2) ??????????????Cross ???? 0??????????
 		if (Side.IsNearlyZero())
 		{
 			Side = FVector::CrossProduct(FVector::RightVector, Forward).GetSafeNormal();
@@ -44,6 +44,7 @@ void AGeneralProjectile_AI::Fire(float CharingTime)
 	}
 	BezierLocation = RandomTargetLocation(EnemyTargetActor, OwnerActor);
 	ProjectileMoveComp->Activate();
+	ActivateProjectileNiagara();
 }
 
 

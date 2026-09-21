@@ -66,7 +66,7 @@ void UPlayerTraceComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 	}
 
 
-	//UE_LOG(LogTemp, Warning, TEXT("Attacking!"));
+	UE_LOG(LogTemp, Warning, TEXT("Attacking!"));
 	TArray<AWeaponGeneral*> FCurrentWeapons = 
 		WeaponSystemComp->AllGaintedWeaponStructs[WeaponSystemComp->ECurrentWeapons];
 	//TArray<FHitResult> AllOutHits;
@@ -211,11 +211,11 @@ void UPlayerTraceComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 	};
 
 	
-	UE_LOG(LogTemp, Warning, TEXT("Montage ID: %i"), Trace_MontageInstanceID);
+	
 	//UE_LOG(LogTemp, Warning, TEXT("AllOutHits: %i"), AllOutHits.Num());
 //	UE_LOG(LogTemp, Warning, TEXT("GA_WarpMontageAttack is : %s"), *GA_WarpMontageAttack->GetName());
 	if (AllOutHits.Num() == 0) return;
-	
+	//UE_LOG(LogTemp, Warning, TEXT("Montage ID: %i"), Trace_MontageInstanceID);
 
 	AActor* OwnerActor = GetOwner();
 	if (!OwnerActor)
@@ -242,7 +242,7 @@ void UPlayerTraceComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 		{
 			continue;
 		}
-
+		TargetsToIngore.AddUnique(TargetActor);
 		FGameplayEventData Playload_TraceHit;
 		Playload_TraceHit.EventTag = EventTraceHit;
 		Playload_TraceHit.Instigator = OwnerActor;
@@ -261,50 +261,6 @@ void UPlayerTraceComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 			Playload_TraceHit
 		);
 
-
-
-		//FGameplayEventData Playload_Hit;
-		//Playload_Hit.EventTag = EventAttackHit;
-		//Playload_Hit.Instigator = OwnerActor;
-		//Playload_Hit.Target = TargetActor;
-		//Playload_Hit.OptionalObject2 = OwnerActor;
-
-		//FGameplayAbilityTargetData_SingleTargetHit* const SingleTargetData = new FGameplayAbilityTargetData_SingleTargetHit();
-		//SingleTargetData->HitResult = Hit;
-	
-		//FGameplayAbilityTargetDataHandle TargetHandle;
-		//TargetHandle.Add(SingleTargetData);
-
-		//Playload_Hit.TargetData = TargetHandle;
-
-		//UE_LOG(LogTemp, Warning, TEXT("TargetActor: %s"), *TargetActor->GetName());
-		//UE_LOG(LogTemp, Warning, TEXT("Instigator: %s"), *OwnerActor->GetName());
-
-
-	
-
-		//UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
-		//	OwnerActor,
-		//	EventAttackHit,
-		//	Playload_Hit);
-
-
-		//FGameplayEventData Playload_Defender;
-		//FGameplayAbilityTargetDataHandle DenfenderData;
-		//Playload_Defender.EventTag = EventDefender;
-		//Playload_Defender.Instigator = OwnerActor;
-		//Playload_Defender.Target = TargetActor;
-		//Playload_Defender.EventMagnitude = GA_WarpMontageAttack ? GA_WarpMontageAttack->DamageMagnitude : 0.0f;
-
-		//FGameplayAbilityTargetData_SingleTargetHit* const SingleDefendData = new FGameplayAbilityTargetData_SingleTargetHit();
-		//SingleDefendData->HitResult = Hit;
-		//DenfenderData.Add(SingleDefendData);
-		//Playload_Defender.TargetData = DenfenderData;
-
-		//UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
-		//	TargetActor,
-		//	EventDefender,
-		//	Playload_Defender);
 
 
 		if (!IsValid(TargetActor) || TargetsToIngore.Contains(TargetActor)) continue;
@@ -353,7 +309,7 @@ void UPlayerTraceComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 			}
 		}
 
-		TargetsToIngore.AddUnique(TargetActor);
+		
 	}
 
 }

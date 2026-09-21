@@ -68,6 +68,13 @@ public:
 	TSubclassOf<UGameplayEffect>  GE_ToAttacker;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Attacker")
 	float GE_ToAttacker_Lv;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Target")
+	float GE_ToTarget_Magnitude;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Target")
+	TSubclassOf<UGameplayEffect>  GE_ToTarget;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Target")
+	float GE_ToTarget_Lv;
+
 
 protected:
 	class APlayerCharacter* CharRef;
@@ -109,6 +116,9 @@ protected:
 	//向攻击者执行GE
 	UFUNCTION(BlueprintCallable)
 	void ApplyGEToAttacker(FGameplayEventData Playload, FGameplayTag DataTag);
+	//向目标执行GE
+	UFUNCTION(BlueprintCallable)
+	void ApplyGEToTarget(FGameplayTag DataTag);
 
 
 

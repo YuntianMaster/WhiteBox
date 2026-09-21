@@ -5,6 +5,7 @@
 #include "Core/CameraNodeEvaluator.h"
 #include "GameFramework/Actor.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Core/CameraParameterReader.h"
 #include "Nodes/Input/Input2DCameraNode.h"
 #include "Player/PlayerCharacter.h"
 
@@ -24,10 +25,14 @@ class FCameraLockYawPitchInputEvaluator : public FInput2DCameraNodeEvaluator
 	UE_DECLARE_CAMERA_NODE_EVALUATOR_EX(WHITEBOX_API, FCameraLockYawPitchInputEvaluator, FInput2DCameraNodeEvaluator)
 
 protected:
+
+
 	virtual void OnRun(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult) override;
 	virtual void OnInitialize(
 		const FCameraNodeEvaluatorInitializeParams& Params,
 		FCameraNodeEvaluationResult& OutResult) override;
+
+	TCameraParameterReader<FVector3d> TargetLocationReader;
 };
 
 UE_DEFINE_CAMERA_NODE_EVALUATOR(FCameraLockYawPitchInputEvaluator)
@@ -35,6 +40,17 @@ UE_DEFINE_CAMERA_NODE_EVALUATOR(FCameraLockYawPitchInputEvaluator)
 void FCameraLockYawPitchInputEvaluator::OnInitialize(const FCameraNodeEvaluatorInitializeParams& Params, FCameraNodeEvaluationResult& OutResult)
 {
 	InputValue = FVector2d::ZeroVector;
+
+
+
+
+	const UCameraLockYawPitch* LockNode = GetCameraNodeAs<UCameraLockYawPitch>();
+	if (!LockNode)
+	{
+		
+		return;
+	}
+	TargetLocationReader.Initialize(LockNode->FocusTarget);
 	if (const FCameraNodeEvaluationResult* LastResult = Params.LastActiveCameraRigInfo.LastResult)
 	{
 		const FRotator3d& LastRotation = LastResult->CameraPose.GetRotation();
@@ -44,6 +60,7 @@ void FCameraLockYawPitchInputEvaluator::OnInitialize(const FCameraNodeEvaluatorI
 
 void FCameraLockYawPitchInputEvaluator::OnRun(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult)
 {
+
 	const UCameraLockYawPitch* LockNode = GetCameraNodeAs<UCameraLockYawPitch>();
 	if (!LockNode)
 	{
@@ -68,10 +85,10 @@ void FCameraLockYawPitchInputEvaluator::OnRun(const FCameraNodeEvaluationParams&
 	}
 
 	const FVector PlayerLocation = Player->GetActorLocation();
-	FVector TargetLocation = Player->TargetActor->GetActorLocation();
-	TargetLocation.Z -= LockNode->TargetHeightOffset;
+	FVector TargetLocation = TargetLocationReader.Get(OutResult.VariableTable);
+	//TargetLocation.Z -= LockNode->TargetHeightOffset;
 
-	FRotator TargetRotation = UKismetMathLibrary::FindLookAtRotation(PlayerLocation, TargetLocation);
+	FRotator TargetRotation = UKismetMathLibrary::FindLookAtRotation(OutResult.CameraPose.GetLocation(), TargetLocation);
 	TargetRotation.Pitch = FMath::Clamp(TargetRotation.Pitch, LockNode->MinPitch.Value, LockNode->MaxPitch.Value);
 	//UE_LOG(LogTemp, Warning, TEXT("TargetRotation: MinPitch.Value=%f MaxPitch.Value=%f"), LockNode->MinPitch.Value, LockNode->MaxPitch.Value);
 	// Boom Arm: FRotator(YawPitch.Y, YawPitch.X, 0) => X=Yaw, Y=Pitch
