@@ -206,6 +206,9 @@ void UGA_WarpMontageAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, 
 			PlayerTraceComponent->GA_WarpMontageAttack = nullptr;
 		}
 	}
+
+	if(!bIsEnemyAbility)
+		Cast<APawn>(CharRef)->bUseControllerRotationYaw = true;
 }
 
 void UGA_WarpMontageAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -231,13 +234,38 @@ void UGA_WarpMontageAttack::ActivateAbility(const FGameplayAbilitySpecHandle Han
 		TickTask->OnTick.AddDynamic(this, &UGA_WarpMontageAttack::UpdatePlayeRate);
 		TickTask->ReadyForActivation();
 	}
+
+	if (!GA_TargetActor) return;
+
+	UCamerManagerComponent* UMC;
+
+
+
+
+	if (bIsEnemyAbility)
+	{
+		UMC = GA_TargetActor->GetComponentByClass<UCamerManagerComponent>();
+	}
+	else
+	{
+		UMC = CharRef->GetComponentByClass<UCamerManagerComponent>();
+		if (bIsUnlockControlYaw)
+			Cast<APawn>(CharRef)->bUseControllerRotationYaw = false;
+		UE_LOG(LogTemp, Error, TEXT("UGA_WarpMontageAttack::ActivateAbility: no enemy ArmChange"));
+	}
+
+	if (UMC && bIsStartMontageWithBoomChange)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UGA_WarpMontageAttack::ActivateAbility: ArmChange"));
+		UMC->CameraBoomArmValueChangeHandle(ArmValue);
+	}
 }
 
 
 void UGA_WarpMontageAttack::OnTraceHitHandle(FGameplayEventData Payload)
 {
 
-	OnTraceSuccessBroadCast();
+	OnTraceSuccessBroadCast(Payload);
 	
 
 

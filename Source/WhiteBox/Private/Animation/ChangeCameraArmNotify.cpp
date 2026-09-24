@@ -13,10 +13,14 @@ void UChangeCameraArmNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSeque
 	{
 		return;
 	}
+
+	
 	AActor* Owner = MeshComp->GetOwner();
+	
 	AEnemyAIController* EnemyController = Cast<AEnemyAIController>(Cast<APawn>(Owner)->GetController());
 	if (!EnemyController) {
 		UE_LOG(LogTemp, Warning, TEXT("EnemyAIController not found on actor: %s"), *Owner->GetName());
+		PlayerNotify(MeshComp, Animation, EventReference);
 		return;
 	}
 	AActor* EnemyTargetActor = EnemyController->EnemyTargetActor;
@@ -40,4 +44,11 @@ void UChangeCameraArmNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSeque
 		if (PlayerTargetActor)
 			UE_LOG(LogTemp, Warning, TEXT("PlayerCharacter's TargetActor is : %s"), *PlayerTargetActor->GetName());
 	}
+}
+
+void UChangeCameraArmNotify::PlayerNotify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference)
+{
+	AActor* Owner = MeshComp->GetOwner();
+	UCamerManagerComponent* CameraManagerComp = Owner->FindComponentByClass<UCamerManagerComponent>();
+	CameraManagerComp->CameraBoomArmValueChangeHandle(ArmValue);
 }

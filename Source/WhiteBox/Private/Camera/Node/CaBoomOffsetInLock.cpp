@@ -18,6 +18,7 @@
 #include "Engine/Engine.h"
 #include "Math/CriticalDamper.h"
 #include "Structure/FCameraArmStruct.h"
+#include "Animation/PlayerAnimInstance.h"
 #include "GameFramework/PlayerController.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(CaBoomOffsetInLock)
@@ -158,6 +159,7 @@ namespace UE::Cameras
 		void DeadZoneHandle(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult, FVector TableLocation, FVector CALocation);
 		void CABoomArm(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult);
 		float GetTargetDistance(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult);
+		void ComputeRawOffset(AActor* PlayerOwner, FVector TargetLoc);
 		bool CaculateCameraRotate(const FVector& PlayerLoc,const FVector& TargetLoc,const FVector& BoomArm, FRotator& OutRot);
 
 	private:
@@ -188,6 +190,9 @@ namespace UE::Cameras
 		FVector	LastBoom;
 
 		FRotator LastCameraRot;
+
+		//DeadZone
+		bool bLatchedInDead = false;
 	};
 
 	UE_DEFINE_CAMERA_NODE_EVALUATOR(FCaBoomOffsetInLockEvaluator)
@@ -396,9 +401,9 @@ namespace UE::Cameras
 
 		bool bIdealInFront, bCurrentInFront;
 		ProjectToScreen(CALocation, CalUV, bIdealInFront);
-		const FVector2D ScreenCenter = BoomOffsetNode->ScreenCenter;
+		FVector2D ScreenCenter = BoomOffsetNode->ScreenCenter;
 		ProjectToScreen(TableLocation, CurrentUV, bCurrentInFront);
-
+	
 
 
 		//屏幕投射计算
@@ -431,23 +436,6 @@ namespace UE::Cameras
 		const bool bInDead = InRect(CalUV, DeadHalf);
 		const bool bInSoft = InRect(CalUV, SoftHalf);
 
-
-		if (bInDead || GetTargetDistance(Params,OutResult) < BoomOffsetNode->DeadZoneDistanceThreshold)
-		{
-			if (UVector3dCameraVariable* Var = BoomOffsetNode->FocusTarget.Variable)
-			{
-				OutResult.VariableTable.SetValue(Var, CAFocusLocation);
-			}
-			return;
-		}
-		//UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockEvaluator::OnRun: CalUV:%s"), *CalUV.ToString());
-		
-
-		const float UnlockRadius = BoomOffsetNode->UnlockRadius;           // UE 默认 ReframeUnlockRadius
-		const float W0 = BoomOffsetNode->W0;
-
-		static bool bIsReframing = false;
-
 		if (BoomOffsetNode->bIsDebug && GEngine && GEngine->GameViewport)
 		{
 			using namespace CaBoomOffsetInLockDebug;
@@ -471,44 +459,82 @@ namespace UE::Cameras
 			CaBoomOffsetInLockDebug::GDebugState.bActive = false;
 		}
 
+
+		if (bInDead || GetTargetDistance(Params,OutResult) < BoomOffsetNode->DeadZoneDistanceThreshold)
+		{
+			if (UVector3dCameraVariable* Var = BoomOffsetNode->FocusTarget.Variable)
+			{
+				OutResult.VariableTable.SetValue(Var, CAFocusLocation);
+			}
+			return;
+		}
+		//UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockEvaluator::OnRun: CalUV:%s"), *CalUV.ToString());
+		
+
+		const float UnlockRadius = BoomOffsetNode->UnlockRadius;           // UE 默认 ReframeUnlockRadius
+		const float W0 = BoomOffsetNode->W0;
+
+		static bool bIsReframing = false;
+
+		FVector2D EffectiveScreen = CalUV;
+		// Hard：先瞬间贴到 Soft 边（沿 Ideal→当前 方向）
+		if (!bInSoft)
+		{
+			const FVector2D Diagonal = ScreenCenter - CalUV;
+			const float Ax = FMath::Abs(Diagonal.X) > KINDA_SMALL_NUMBER
+				? SoftHalf / FMath::Abs(Diagonal.X) : BIG_NUMBER;
+			const float Ay = FMath::Abs(Diagonal.Y) > KINDA_SMALL_NUMBER
+				? SoftHalf / FMath::Abs(Diagonal.Y) : BIG_NUMBER;
+			EffectiveScreen = ScreenCenter + Diagonal * FMath::Min(Ax, Ay);
+			UE_LOG(LogTemp, Warning, TEXT("OUT OF SOFT"));
+
+		}
+
+		const FVector2D DeadMin(ScreenCenter.X - DeadHalf, ScreenCenter.Y - DeadHalf);
+		const FVector2D DeadMax(ScreenCenter.X + DeadHalf, ScreenCenter.Y + DeadHalf);
+
+		const FVector2D DeadEdgeUV(
+			FMath::Clamp(CalUV.X, DeadMin.X, DeadMax.X),
+			FMath::Clamp(CalUV.Y, DeadMin.Y, DeadMax.Y)
+		);
+
+		FVector2D IdealToTarget = EffectiveScreen - DeadEdgeUV;
+		//UE_LOG(LogTemp, Warning, TEXT("IdealToTarget: %s"), *IdealToTarget.ToString());
+		double DistanceToGo = IdealToTarget.Size();
+
+
+		//进入更小，出更大
+		const float EnterHalf = DeadHalf;                 
+		const float ExitHalf = DeadHalf * 1.15f;         
+
+		const bool bRawEnter = InRect(CalUV, EnterHalf);
+		const bool bRawExit = InRect(CalUV, ExitHalf);
+
+		if (!bLatchedInDead) bLatchedInDead = bRawEnter;
+		else                 bLatchedInDead = bRawExit;
+
+
 		if (!bInSoft)
 		{
 			bIsReframing = true;           // Hard：强制 reframing
 		}
-		else if (!bInDead)
+		else if (!bLatchedInDead && DistanceToGo > UnlockRadius)
 		{
 			bIsReframing = true;           // Soft：温和 reframing
 		}
-		else if (bIsReframing)
+
+		const bool bSettledOnEdge = DistanceToGo <= UnlockRadius;
+
+		if (bIsReframing && bSettledOnEdge)
 		{
-			// 回到 Dead 后，收到 Unlock 半径才停（和 UE 一样）
-			const float DistIdeal = FVector2D::Distance(
-				FVector2D(ScreenCenter.X, (ScreenCenter.Y - 0.5f) / Aspect + 0.5f),
-				FVector2D(CalUV.X, (CalUV.Y - 0.5f) / Aspect + 0.5f));
-			if (DistIdeal <= UnlockRadius + KINDA_SMALL_NUMBER)
-			{
+			
 				bIsReframing = false;
-			}
+				ReframeDamper.Reset(0.f, 0.f);
+			
 		}
 
 		if (bIsReframing)
 		{
-			FVector2D EffectiveScreen = CalUV;
-			// Hard：先瞬间贴到 Soft 边（沿 Ideal→当前 方向）
-			if (!bInSoft)
-			{
-				const FVector2D Diagonal = ScreenCenter - CalUV;
-				const float Ax = FMath::Abs(Diagonal.X) > KINDA_SMALL_NUMBER
-					? SoftHalf / FMath::Abs(Diagonal.X) : BIG_NUMBER;
-				const float Ay = FMath::Abs(Diagonal.Y) > KINDA_SMALL_NUMBER
-					? SoftHalf / FMath::Abs(Diagonal.Y) : BIG_NUMBER;
-				EffectiveScreen = ScreenCenter + Diagonal * FMath::Min(Ax, Ay);
-				
-			}
-			FVector2D IdealToTarget = EffectiveScreen - ScreenCenter;
-			//UE_LOG(LogTemp, Warning, TEXT("IdealToTarget: %s"), *IdealToTarget.ToString());
-			double DistanceToGo = IdealToTarget.Size();
-
 
 			if (DistanceToGo > KINDA_SMALL_NUMBER)
 			{
@@ -517,17 +543,20 @@ namespace UE::Cameras
 				// Update(当前距离)：向 0 收敛，返回新的「剩余距离」
 				const double NewDamped = ReframeDamper.Update(DampingDistanceToGo, Params.DeltaTime);
 				const double NewDistanceToGo = NewDamped + UnlockRadius;
-
+				
 				// --- 适配你们「改 Table 焦点」管线 ---
 				// 屏幕上希望 CA 从 ScreenTarget 移到 DesiredScreen：
 				// 用同一比例把 Table 往 CA 推（近似 UE 的 reframing 量）
 				const double OldD = FMath::Max(DistanceToGo, UE_DOUBLE_SMALL_NUMBER);
+				UE_LOG(LogTemp, Warning, TEXT("NewDistanceToGo: %f"), NewDistanceToGo);
+				UE_LOG(LogTemp, Warning, TEXT("OldD: %f"), OldD);
+				UE_LOG(LogTemp, Warning, TEXT("NewDistanceToGo / OldD: %f"), NewDistanceToGo / OldD);
 				const double Alpha = FMath::Clamp(1.0 - (NewDistanceToGo / OldD), 0.0, 1.0);
 				CAFocusLocation = FMath::Lerp(TableLocation, CALocation, Alpha);
 
-				/*UE_LOG(LogTemp, Warning, TEXT("TableLocation: %s"), *TableLocation.ToString());
+				UE_LOG(LogTemp, Warning, TEXT("TableLocation: %s"), *TableLocation.ToString());
 				UE_LOG(LogTemp, Warning, TEXT("CALocation: %s"), *CALocation.ToString());
-				UE_LOG(LogTemp, Warning, TEXT("CAFocusLocation: %s"), *CAFocusLocation.ToString());*/
+				UE_LOG(LogTemp, Warning, TEXT("CAFocusLocation: %s"), *CAFocusLocation.ToString());
 
 				if (UVector3dCameraVariable* Var = BoomOffsetNode->FocusTarget.Variable)
 				{
@@ -630,7 +659,7 @@ namespace UE::Cameras
 		
 
 		
-		if (CaculateCameraRotate(PlayerLocation, TargetLocation, GetBoomArm(OutResult), DesiredRot))
+		if (CaculateCameraRotate(PlayerLocation, FocusLocation, GetBoomArm(OutResult), DesiredRot))
 		{
 	
 			LastCameraRot = UKismetMathLibrary::RInterpTo_Constant(LastCameraRot, DesiredRot, Params.DeltaTime, BoomOffsetNode->CameraRotMoveSpeed);
@@ -640,9 +669,9 @@ namespace UE::Cameras
 		
 		DesiredRot = LastCameraRot;
 		DesiredRot.Pitch = FMath::Clamp(DesiredRot.Pitch, MinPitch, MaxPitch);
-		UE_LOG(LogTemp, Error, TEXT("DesiredRot: %s"), *DesiredRot.ToString());
+		//UE_LOG(LogTemp, Error, TEXT("DesiredRot: %s"), *DesiredRot.ToString());
 
-
+		ComputeRawOffset(OwnerActor, FocusLocation);
 		const float FieldOfView = OutResult.CameraPose.GetFieldOfView();
 		float AspectRatio = 16.f / 9.f;
 		if (APlayerController* PlayerController = Params.EvaluationContext->GetPlayerController()) {
@@ -872,30 +901,30 @@ namespace UE::Cameras
 
 
 
-	/*	UE_LOG(LogTemp, Warning, TEXT("bSameDirChase: %i"), bSameDirChase);
-		UE_LOG(LogTemp, Warning, TEXT("bNearFixed: %i"), bNearFixed);
-		UE_LOG(LogTemp, Warning, TEXT("bCorrecting: %i"), bCorrecting);
-		UE_LOG(LogTemp, Warning, TEXT("bBoomChanging: %i"), bBoomChanging);
-		UE_LOG(LogTemp, Warning, TEXT("bSceneMoving: %i"), bSceneMoving);
-		UE_LOG(LogTemp, Warning, TEXT("bDeadLoop: %i"), bDeadLoop);*/
+		//UE_LOG(LogTemp, Warning, TEXT("bSameDirChase: %i"), bSameDirChase);
+		//UE_LOG(LogTemp, Warning, TEXT("bNearSingularity: %i"), bNearSingularity);
+		//UE_LOG(LogTemp, Warning, TEXT("bNearFixed: %i"), bNearFixed);
+		//UE_LOG(LogTemp, Warning, TEXT("bCorrecting: %i"), bCorrecting);
+		//UE_LOG(LogTemp, Warning, TEXT("bBoomChanging: %i"), bBoomChanging);
+		//UE_LOG(LogTemp, Warning, TEXT("bSceneMoving: %i"), bSceneMoving);
+		//UE_LOG(LogTemp, Warning, TEXT("bDeadLoop: %i"), bDeadLoop);
 
 
 		
-		/*if(!bDeadLoop)*/
-		OutResult.CameraPose.SetRotation(DesiredRot);
+		//if(!bDeadLoop)
+			OutResult.CameraPose.SetRotation(DesiredRot);
 
 
 		LastBoom = FinalBoomOffset;
 		LastPlayerLoc = PlayerLocation;
 		LastFocusLoc = FocusLocation;
 	
-		UE_LOG(LogTemp, Warning, TEXT("PlayerLocation: %s"), *PlayerLocation.ToString());
+	/*	UE_LOG(LogTemp, Warning, TEXT("PlayerLocation: %s"), *PlayerLocation.ToString());
 		UE_LOG(LogTemp, Warning, TEXT("FocusLocation: %s"), *FocusLocation.ToString());
 		UE_LOG(LogTemp, Warning, TEXT("TargetLocation: %s"), *TargetLocation.ToString());
 		UE_LOG(LogTemp, Warning, TEXT("FinalBoomOffset: %s"), *CurrentBoom.ToString());
-		
 		UE_LOG(LogTemp, Warning, TEXT("DesiredRot: %s"), *DesiredRot.ToString());
-
+		UE_LOG(LogTemp, Warning, TEXT("CamerLoc: %s"), *OutResult.CameraPose.GetLocation().ToString());*/
 
 
 	}
@@ -937,6 +966,18 @@ namespace UE::Cameras
 		const FVector TargetLocation = TargetActor->GetActorLocation();
 		const FVector PlayerLocation = PlayerCharacter->GetActorLocation();
 		return FVector::Distance(TargetLocation, PlayerLocation);
+	}
+
+	void FCaBoomOffsetInLockEvaluator::ComputeRawOffset(AActor* PlayerOwner, FVector TargetLoc)
+	{
+		FVector PlayerLoc = PlayerOwner->GetActorLocation();
+		FRotator PlayerRot = PlayerOwner->GetActorRotation();
+		FRotator TargetRot = UKismetMathLibrary::FindLookAtRotation(PlayerLoc, TargetLoc);
+
+		ACharacter* CharActor = Cast<ACharacter>(PlayerOwner);
+		UPlayerAnimInstance* AnimInst = Cast<UPlayerAnimInstance>(CharActor->GetMesh()->GetAnimInstance());
+		AnimInst->LockYawOffset =TargetRot.Yaw - PlayerRot.Yaw;
+		//UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockEvaluator::ComputeRawOffset: Player Yaw: %f, TargetRot Yaw: %f"), PlayerRot.Yaw, TargetRot.Yaw);
 	}
 
 	bool FCaBoomOffsetInLockEvaluator::CaculateCameraRotate(const FVector& PlayerLoc, const FVector& TargetLoc, const FVector& BoomArm, FRotator& OutRot)

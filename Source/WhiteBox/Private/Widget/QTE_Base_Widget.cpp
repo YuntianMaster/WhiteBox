@@ -29,6 +29,18 @@ void UQTE_Base_Widget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
 		QTE_Current_Mask->SetVisibility(
 			bIsCurrentQTE ? ESlateVisibility::Hidden : ESlateVisibility::Visible);
 	}
+
+	// Widget Tick 传入的 InDeltaTime 已被 GlobalTimeDilation 缩放。
+	// QTE 反应时间按真实时间走，SlowRate 只影响世界，不影响倒计时。
+	const UWorld* World = GetWorld();
+	const float RealDelta = World ? World->DeltaRealTimeSeconds : InDeltaTime;
+	QTE_RemaingTime += RealDelta;
+	OnUpdateRemaingTime();
+
+	if (QTE_RemaingTime >= QTE_Time)
+	{
+		HandleQTEResult();
+	}
 }
 
 void UQTE_Base_Widget::CreateQTE(float QTETime, FName BoneName)
@@ -84,8 +96,6 @@ void UQTE_Base_Widget::CreateQTE(float QTETime, FName BoneName)
 	SetVisibility(ESlateVisibility::Visible);
 	
 	QTE_Time = QTETime;
-	GetWorld()->GetTimerManager().ClearTimer(QTE_TimerHandle);
-	GetWorld()->GetTimerManager().ClearTimer(QTE_RemaingTimeHandle);
 	TArray<FQTEPromptRow*> Rows;
 	QTETable->GetAllRows(TEXT("QTE"), Rows);
 	OnQTELoadReadyDeleagate.AddUniqueDynamic(this, &UQTE_Base_Widget::OnQTEPromptReady);
@@ -136,25 +146,6 @@ void UQTE_Base_Widget::CreateQTE(float QTETime, FName BoneName)
 	{
 		RemaingTimeSlider->SetValue(0.f);
 	}
-
-	GetWorld()->GetTimerManager().SetTimer(
-		QTE_TimerHandle,
-		this,
-		&UQTE_Base_Widget::HandleQTEResult,
-		QTETime,
-		false
-	);
-
-	// DeltaTimeSeconds ? CreateQTE ?????? 0?Rate<=0 ? Timer ????
-	GetWorld()->GetTimerManager().SetTimer(
-		QTE_RemaingTimeHandle,
-		this,
-		&UQTE_Base_Widget::OnUpdateRemaingTime,
-		0.01f,
-		true
-	);
-
-	
 }
 
 void UQTE_Base_Widget::HandleQTESuccess()
@@ -172,9 +163,10 @@ void UQTE_Base_Widget::HandleQTEResult()
 		return;
 	}
 	bIsQTEActive = false;
-	QTE_Current_Mask->SetVisibility(ESlateVisibility::Hidden);
-	GetWorld()->GetTimerManager().ClearTimer(QTE_TimerHandle);
-	GetWorld()->GetTimerManager().ClearTimer(QTE_RemaingTimeHandle);
+	if (QTE_Current_Mask)
+	{
+		QTE_Current_Mask->SetVisibility(ESlateVisibility::Hidden);
+	}
 
 	if (APlayerController* PC = GetOwningPlayer())
 	{
@@ -211,12 +203,8 @@ void UQTE_Base_Widget::OnQTEPromptReady(FKey Key, UTexture2D* Image)
 
 void UQTE_Base_Widget::OnUpdateRemaingTime()
 {
-	// ? Timer ????????????? Delta?? 0.01 ???????
-	QTE_RemaingTime += 0.01f;
-	
 	if (RemaingTimeSlider && QTE_Time > 0.f)
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("Value: %f"), FMath::Clamp(QTE_RemaingTime / QTE_Time, 0.f, 1.f));
 		RemaingTimeSlider->SetValue(FMath::Clamp(QTE_RemaingTime / QTE_Time, 0.f, 1.f));
 	}
 }

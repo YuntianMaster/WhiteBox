@@ -36,6 +36,7 @@ public:
 	class UOverlay* QTE_Overlay;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ExposeOnSpawn = "TRUE"))
 	float QTE_Time{1.f};
+	// 已经过的真实时间（秒），不受 GlobalTimeDilation 影响
 	float QTE_RemaingTime;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "QTE Settings")
 	TObjectPtr<UDataTable> QTETable;
@@ -46,8 +47,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "QTE Settings")
 	FVector2D LocOffset;
 	class UInputMappingContext* ActiveQTEIMC;
-	FTimerHandle QTE_TimerHandle;
-	FTimerHandle QTE_RemaingTimeHandle;
 	bool bIsSuccess;
 	UPROPERTY(BlueprintAssignable)
 	FOnQTELoadReadySingnature OnQTELoadReadyDeleagate;

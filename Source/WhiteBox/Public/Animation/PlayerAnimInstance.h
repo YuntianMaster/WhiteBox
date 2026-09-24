@@ -144,5 +144,11 @@ public:
 	float FallingExitFloorDist = 40.f;
 
 	void UpdateFallingAnimState();
+
+
+	//Lock Yaw Offset;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float LockYawOffset;
+
 };
 	

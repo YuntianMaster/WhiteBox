@@ -89,7 +89,7 @@ void ULockComponent::OnlockStart()
 	OnUpdateTargetDelegate.Broadcast(CurrentTargetActor);
 	Controller->SetIgnoreLookInput(true);
 	MovementComp->bOrientRotationToMovement = false;
-	MovementComp->bUseControllerDesiredRotation = true;
+	MovementComp->bUseControllerDesiredRotation = false;
 	OwnRef->TargetActor = CurrentTargetActor;
 	//Change to BattleMode
 	float During = OwnRef->PlayAnimMontage(BattleAction);
@@ -161,6 +161,8 @@ void ULockComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorC
 	FRotator newRotation{ UKismetMathLibrary::FindLookAtRotation(CurrentLocation,TargetLocation) };
 	double TargetDistance{ FVector::Distance(CurrentLocation,TargetLocation) };
 
+
+
 	//UE_LOG(LogTemp, Warning, TEXT("TargetDistance: %f"), TargetDistance);
 	if (TargetDistance > BreakDistance)
 	{
@@ -168,8 +170,7 @@ void ULockComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorC
 		return;
 	}
 	newRotation.Pitch = UKismetMathLibrary::FClamp(newRotation.Pitch, maxPitch, newRotation.Pitch);
-	//Controller->SetControlRotation(newRotation);
-	//GetOwner()->SetActorRotation(newRotation);
+	
 	
 }
 

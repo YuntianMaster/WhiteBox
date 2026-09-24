@@ -26,6 +26,8 @@ namespace UE::Cameras {
 		
 		FVector GetBoomArmOffset(const FCameraNodeEvaluationResult& Result) const;
 
+		FRotator CaCamRot(AActor* PlayerOwner);
+
 	private:
 		TCameraParameterReader<float> MinPitchReader;
 		TCameraParameterReader<float> MaxPitchReader;
@@ -72,6 +74,8 @@ namespace UE::Cameras {
 			return;
 		}
 
+		PlayerCharacter->bUseControllerRotationYaw = false;
+
 		const float MaxPitch = MaxPitchReader.Get(OutResult.VariableTable);
 		const float MinPitch = MinPitchReader.Get(OutResult.VariableTable);
 		const float float_CenterToEnemy = CenterToEnemy.Get(OutResult.VariableTable);
@@ -79,34 +83,14 @@ namespace UE::Cameras {
 		const FVector CurrentTargetLoc = TargetActor->GetActorLocation();
 
 		
-		const FVector FocusEnemyLocation = UKismetMathLibrary::VLerp(PlayerCharacter->GetActorLocation(), CurrentTargetLoc, float_CenterToEnemy);
-		const FVector FocusLocation = UKismetMathLibrary::VLerp(InitialTargetLoc, FocusEnemyLocation, float_CenterToEnemy);
-
+	
 
 	
 
 		const FVector PlayerLocation = OwnerActor->GetActorLocation();
-		FRotator CurrentCameraRot = OutResult.CameraPose.GetRotation();
-		OutResult.CameraPose.SetRotation(FRotator(CurrentCameraRot.Pitch,InitialCameraRot.Yaw,0.f));
 	
 
-		if (UVector3dCameraVariable* Var = CaBoomOffsetInLockOffsetTargetNode->FocusTarget.Variable)
-		{
-			OutResult.VariableTable.SetValue(Var, FocusLocation);
-
-		}
-
-		//UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockOffsetTargetEvaluator::OnRun: FocusLocation is %s"), *FocusLocation.ToString());
-
-		FRotator DesiredRot = UKismetMathLibrary::FindLookAtRotation(PlayerLocation, FocusLocation);
-		bool bPitchAtLimit = DesiredRot.Pitch > MaxPitch ||
-			DesiredRot.Pitch < MinPitch;
-		if (bPitchAtLimit) {
-
-			Margin *= CaBoomOffsetInLockOffsetTargetNode->PitchLimitMarginScale;
-		}
-
-		DesiredRot.Pitch = FMath::Clamp(DesiredRot.Pitch, MinPitch, MaxPitch);
+		
 		const float FieldOfView = OutResult.CameraPose.GetFieldOfView();
 		float AspectRatio = 16.f / 9.f;
 		if (APlayerController* PlayerController = Params.EvaluationContext->GetPlayerController()) {
@@ -126,6 +110,8 @@ namespace UE::Cameras {
 
 		}
 
+		FTransform PlayerTrans = OwnerActor->GetActorTransform();
+
 		auto BoomOffset = [&](float Length)->FVector {
 			return FVector(-Length, CaBoomOffsetInLockOffsetTargetNode->BoomLatera, CaBoomOffsetInLockOffsetTargetNode->BoomHeight);
 			};
@@ -133,22 +119,24 @@ namespace UE::Cameras {
 
 		auto CameraPos = [&](float Length)->FVector {
 
-			return PlayerLocation + DesiredRot.RotateVector(BoomOffset(Length));
+			return PlayerTrans.TransformPosition(BoomOffset(Length));
+				
+				
 			};
 
 		auto CameraForward = [&](float Length)->FVector {
-			FRotator Rot = UKismetMathLibrary::FindLookAtRotation(CameraPos(Length), FocusLocation);
+			FRotator Rot = UKismetMathLibrary::FindLookAtRotation(CameraPos(Length), TargetActor->GetActorLocation());
 			return Rot.Vector();
 
 			};
 
 		auto CameraRight = [&](float Length)->FVector {
-			FRotator Rot = UKismetMathLibrary::FindLookAtRotation(CameraPos(Length), FocusLocation);
+			FRotator Rot = UKismetMathLibrary::FindLookAtRotation(CameraPos(Length), TargetActor->GetActorLocation());
 			return FRotationMatrix(Rot).GetScaledAxis(EAxis::Y);
 			};
 
 		auto CameraUp = [&](float Length)->FVector {
-			FRotator Rot = UKismetMathLibrary::FindLookAtRotation(CameraPos(Length), FocusLocation);
+			FRotator Rot = UKismetMathLibrary::FindLookAtRotation(CameraPos(Length), TargetActor->GetActorLocation());
 			return FRotationMatrix(Rot).GetScaledAxis(EAxis::Z);
 			};
 		const float HalfV = FMath::DegreesToRadians(FieldOfView / 2);
@@ -208,30 +196,17 @@ namespace UE::Cameras {
 				Lo = Mid;
 			}
 		}
-
-
-		//????Boom???
-		//FVector CurrentBoom = GetBoomArmOffset(OutResult);
-		FVector CurrentBoom = BoomOffsetReader.Get(OutResult.VariableTable);
-		//UE_LOG(LogTemp, Warning, TEXT("CurrentBoom: %s"), *CurrentBoom.ToString());
-		//????????
-		FVector FinalBoomOffset = FVector(-Hi, CaBoomOffsetInLockOffsetTargetNode->BoomLatera, CaBoomOffsetInLockOffsetTargetNode->BoomHeight);
-
-
-		UE_LOG(LogTemp, Warning, TEXT("PlayerLocation: %s"), *PlayerLocation.ToString());
-		UE_LOG(LogTemp, Warning, TEXT("CurrentTargetLoc: %s"), *CurrentTargetLoc.ToString());
-		UE_LOG(LogTemp, Warning, TEXT("FocusLocation: %s"), *FocusLocation.ToString());
-		UE_LOG(LogTemp, Warning, TEXT("FinalBoomOffset: %s"), *FinalBoomOffset.ToString());
-
-		float BoomZoomSpeed = BoomZoomSpeedReader.Get(OutResult.VariableTable);
-		FinalBoomOffset = UKismetMathLibrary::VInterpTo_Constant(CurrentBoom, FinalBoomOffset, Params.DeltaTime, BoomZoomSpeed);
-		if (UVector3dCameraVariable* Var = CaBoomOffsetInLockOffsetTargetNode->BoomOffset.Variable)
-		{
-			OutResult.VariableTable.SetValue(Var, FinalBoomOffset);
-		}
-
-
-
+		UE_LOG(LogTemp, Warning, TEXT("Hi:%f"), Hi);
+		FRotator PlayerR = UKismetMathLibrary::FindLookAtRotation(PlayerLocation, TargetActor->GetActorLocation());
+		FVector CamP = PlayerTrans.TransformPosition(FVector(-Hi, CaBoomOffsetInLockOffsetTargetNode->BoomLatera, CaBoomOffsetInLockOffsetTargetNode->BoomHeight));
+		FRotator CamR = UKismetMathLibrary::FindLookAtRotation(CamP, TargetActor->GetActorLocation());
+		
+		
+		OutResult.CameraPose.SetLocation(CamP);
+		OutResult.CameraPose.SetRotation(CamR);
+		PlayerR.Pitch = 0;
+		PlayerR.Roll = 0;
+		OwnerActor->SetActorRotation(PlayerR);
 
 	}
 
@@ -266,6 +241,7 @@ namespace UE::Cameras {
 		MinPitchReader.Initialize(CaBoomOffsetInLockOffsetTargetNode->MinPitch);
 		MaxPitchReader.Initialize(CaBoomOffsetInLockOffsetTargetNode->MaxPitch);
 		CenterToEnemy.Initialize(CaBoomOffsetInLockOffsetTargetNode->CenterToEnemy);
+		BoomOffsetReader.Initialize(CaBoomOffsetInLockOffsetTargetNode->BoomOffset);
 		BoomZoomSpeedReader.Initialize(CaBoomOffsetInLockOffsetTargetNode->BoomZoomSpeed);
 		TargetLocationReader.Initialize(CaBoomOffsetInLockOffsetTargetNode->FocusTarget);
 
@@ -292,11 +268,25 @@ namespace UE::Cameras {
 			return;
 		}
 
+
+		
+
+
+
+
+
 		if (AActor* TargetActor = PlayerCharacter->TargetActor)
 		{
 			InitialTargetLoc = TargetActor->GetActorLocation();
 			InitialPlayerTran = TargetActor->GetActorTransform();
 			UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockOffsetTargetEvaluator::OnInitialize: InitialTargetLoc: %s"), *InitialTargetLoc.ToString());
+
+			FVector PlayerLocation = PlayerCharacter->GetActorLocation();
+			FTransform PlayerTrans = PlayerCharacter->GetTransform();
+			FRotator PlayerR = UKismetMathLibrary::FindLookAtRotation(PlayerLocation, TargetActor->GetActorLocation());
+			FVector CamP = PlayerTrans.TransformPosition(FVector(CaBoomOffsetInLockOffsetTargetNode->MinBoomLength, CaBoomOffsetInLockOffsetTargetNode->BoomLatera, CaBoomOffsetInLockOffsetTargetNode->BoomHeight));
+			FRotator CamR = UKismetMathLibrary::FindLookAtRotation(CamP, TargetActor->GetActorLocation());
+
 
 			if(CaBoomOffsetInLockOffsetTargetNode->bIsDebug)
 			{
@@ -336,9 +326,11 @@ namespace UE::Cameras {
 
 		const FTransform3d& JointTransform = Joints.Last().Transform;
 		const FVector3d RealBoomOffset = JointTransform.InverseTransformPosition(CamLoc);
-
+		
 		return FVector(RealBoomOffset.X, RealBoomOffset.Y, RealBoomOffset.Z);
 	}
+
+	
 
 }
 

@@ -53,7 +53,7 @@ protected:
 
 
 	UFUNCTION(BlueprintImplementableEvent)
-	void OnTraceSuccessBroadCast();
+	void OnTraceSuccessBroadCast(FGameplayEventData Payload);
 	
 		
 protected:
@@ -116,8 +116,13 @@ protected:
 	bool bIsSpecialHitReaction{ false };
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "SpecialHitReaction"), Category = "SpecialHitReaction")
 	UAnimMontage* SpeicalHitReactionMontage;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "SpecialHitReaction"), Category = "SpecialHitReaction")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere,  Category = "SpecialBoomArm")
 	FCameraArmStruct ArmValue;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SpecialBoomArm")
+	bool bIsStartMontageWithBoomChange{ false };
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SpecialBoomArm")
+	bool bIsUnlockControlYaw{false}; //特殊镜头时，解锁Yaw
+	
 	void SpicalHitReactionMontageHandle();
 	UFUNCTION(BlueprintImplementableEvent)
 	void SpicalHitSuccessBroadCast();

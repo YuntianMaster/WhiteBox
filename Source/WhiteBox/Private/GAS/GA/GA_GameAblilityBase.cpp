@@ -12,6 +12,8 @@
 #include "EnvironmentQuery/EnvQueryManager.h"
 #include "AbilitySystemGlobals.h"
 #include "AbilitySystemComponent.h"
+#include "Abilities/GameplayAbilityTargetTypes.h"
+#include "AbilitySystemBlueprintLibrary.h"
 
 UGA_GameAblilityBase::UGA_GameAblilityBase()
 {
@@ -229,29 +231,59 @@ void UGA_GameAblilityBase::ApplyGEToAttacker(FGameplayEventData Playload, FGamep
 		UE_LOG(LogTemp, Warning, TEXT("Attack ASC is not working"));
 }
 
-void UGA_GameAblilityBase::ApplyGEToTarget(FGameplayTag DataTag)
+void UGA_GameAblilityBase::ApplyGEToTarget(FGameplayEventData Playload, FGameplayTag DataTag)
 {
 	AActor* Target = bIsEnemyAbility ? EnemyAIRef->EnemyTargetActor : CharRef->TargetActor;
-	
 	if (!Target)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("UGA_GameAblilityBase::ApplyGEToTarget: TargetActor is not exist"));
 		return;
 	}
 
-
-	
-	UAbilitySystemComponent* TargetASC = Target->GetComponentByClass<UAbilitySystemComponent>();
-	FGameplayEffectContextHandle Context = TargetASC->MakeEffectContext();
-	Context.AddSourceObject(GetAvatarActorFromActorInfo());
-	FGameplayEffectSpecHandle SpecHandle = TargetASC->MakeOutgoingSpec(GE_ToTarget, GE_ToTarget_Lv, Context);
-	if (!SpecHandle.IsValid()) {
-		UE_LOG(LogTemp, Warning, TEXT("SpecHandle is not working"));
+	UAbilitySystemComponent* OwnerASC = GetAbilitySystemComponentFromActorInfo();
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Target);
+	if (!OwnerASC || !TargetASC || !GE_ToTarget)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UGA_GameAblilityBase::ApplyGEToTarget: ASC or GE_ToTarget invalid"));
 		return;
 	}
-	SpecHandle.Data->SetByCallerTagMagnitudes.Add(DataTag, GE_ToTarget_Magnitude);
-	TargetASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 
+	AActor* Avatar = GetAvatarActorFromActorInfo();
+	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
+	Context.AddSourceObject(Avatar);
+	Context.AddInstigator(Avatar, Avatar);
+
+	// HitResult 可能在 ContextHandle，也可能在 TargetData（本项目多走 TargetData）
+	const FHitResult* HitResult = Playload.ContextHandle.GetHitResult();
+	if (!HitResult)
+	{
+		for (int32 i = 0; i < Playload.TargetData.Num(); ++i)
+		{
+			if (const FGameplayAbilityTargetData* Data = Playload.TargetData.Get(i))
+			{
+				HitResult = Data->GetHitResult();
+				if (HitResult)
+				{
+					break;
+				}
+			}
+		}
+	}
+	if (HitResult)
+	{
+		Context.AddHitResult(*HitResult, false);
+	}
+
+	FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(GE_ToTarget, GE_ToTarget_Lv, Context);
+	if (!SpecHandle.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UGA_GameAblilityBase::ApplyGEToTarget: SpecHandle is not valid"));
+		return;
+	}
+
+	// GE 里 SetByCaller 用的是 Data.Damage，调用端传入的 DataTag 必须一致
+	SpecHandle.Data->SetSetByCallerMagnitude(DataTag, GE_ToTarget_Magnitude);
+	OwnerASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 }
 
 

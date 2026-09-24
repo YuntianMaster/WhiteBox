@@ -118,7 +118,7 @@ protected:
 	void ApplyGEToAttacker(FGameplayEventData Playload, FGameplayTag DataTag);
 	//向目标执行GE
 	UFUNCTION(BlueprintCallable)
-	void ApplyGEToTarget(FGameplayTag DataTag);
+	void ApplyGEToTarget(FGameplayEventData Playload, FGameplayTag DataTag);
 
 
 

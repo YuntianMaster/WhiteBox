@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Core/CameraNode.h"
 #include "Core/CameraParameters.h"
+#include "Structure/FCameraArmStruct.h"
 #include "CaBoomOffsetInLockOffsetTarget.generated.h"
 
 /**
@@ -54,6 +55,9 @@ public:
 	float EnemyHalfHeight = 90.f;
 
 	const float ScreenMargin = 0.75f; // FramingSize
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
+	FCameraArmStruct InitalArmValue;
 
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
