@@ -52,6 +52,8 @@ protected:
 	void EndAbilityHandler();
 	UFUNCTION()
 	void ParrySuccessHandle(FGameplayEventData Playload);
+	
+	
 	UFUNCTION()
 	void CriticalParryHandle(FGameplayEventData Playload);
 
@@ -59,7 +61,8 @@ protected:
 public:
 	UFUNCTION(BlueprintCallable)
 	void ParryHandle(FGameplayEventData Playload);
-
+	UFUNCTION(BlueprintImplementableEvent)
+	void ParrySucessHandle();
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 		const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 };

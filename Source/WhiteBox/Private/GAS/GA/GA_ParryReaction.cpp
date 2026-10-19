@@ -100,7 +100,7 @@ void UGA_ParryReaction::ParryHandle(FGameplayEventData Playload)
 			false);
 	}
 
-	else if (H_Angle360 < 0 && V_Angle < 0) {
+	else if (H_Angle360 <= 0 && V_Angle < 0) {
 
 		
 
@@ -168,7 +168,7 @@ void UGA_ParryReaction::ParryHandle(FGameplayEventData Playload)
 	}
 
 
-	else if (H_Angle360 < 0 && V_Angle > 0) {
+	else if (H_Angle360 <= 0 && V_Angle > 0) {
 
 	
 		UE_LOG(LogTemp, Warning, TEXT("UL"));
@@ -265,8 +265,8 @@ void UGA_ParryReaction::ParrySuccessHandle(FGameplayEventData Playload)
 
 
 
-	UE_LOG(LogTemp, Warning, TEXT("Playload.Instigator: %s"), *Playload.Instigator.GetName());
-	
+	UE_LOG(LogTemp, Warning, TEXT("ParrySuccessHandle: Playload.Instigator: %s"), *Playload.Instigator.GetName());
+	ParrySucessHandle();
 		
 }
 

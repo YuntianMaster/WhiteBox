@@ -27,7 +27,11 @@ void UGA_RegenStamina::RegenStaminaHandle(const FOnAttributeChangeData& Data)
 	
 	if (OldValue < NewValue)
 	{
-
+		/*if(ActiveHandle.IsValid())
+		{
+			CharRef->AbilitySystemComp->RemoveActiveGameplayEffect(ActiveHandle, -1);
+			ActiveHandle.Invalidate();
+		}*/
 		return;
 	}
 
@@ -40,11 +44,13 @@ void UGA_RegenStamina::RegenStaminaHandle(const FOnAttributeChangeData& Data)
 		TEXT("RegenStaminDataHandle"),
 		this
 	};
-
+	
 	if(OldValue> NewValue)
 	{
-		//CharRef->AbilitySystemComp->RemoveActiveGameplayEffect(ActiveHandle, -1);
-		UKismetSystemLibrary::RetriggerableDelay(GetWorld(), 2.f, ActionInfo);
+		CharRef->AbilitySystemComp->RemoveActiveGameplayEffect(ActiveHandle, -1);
+		UKismetSystemLibrary::RetriggerableDelay(GetWorld(), DelayRecoveyTime, ActionInfo);
+		
+		
 	}
 
 	if (NewValue >= CharRef->AttributeSet->MaxStamina.GetCurrentValue())

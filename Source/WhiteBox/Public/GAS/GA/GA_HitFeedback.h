@@ -26,6 +26,8 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FGameplayTag GamePlayCueTag;
 
+
+
 protected:
 	void OnHitStopHandler();
 

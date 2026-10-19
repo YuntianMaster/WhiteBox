@@ -31,6 +31,7 @@ void UGA_HitFeedback::ActivateAbility(const FGameplayAbilitySpecHandle Handle, c
 
 
 
+
 	FGameplayCueParameters CueParams;
 
 	CueParams.Instigator = GetAvatarActorFromActorInfo();

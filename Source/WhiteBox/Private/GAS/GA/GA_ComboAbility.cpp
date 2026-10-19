@@ -7,7 +7,13 @@
 #include "HAL/PlatformTime.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Player/PlayerCharacter.h"
+#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "MotionWarpingComponent.h"
+#include "Structure/FGASStucts.h"
+
+
 
 UGA_ComboAbility::UGA_ComboAbility()
 {
@@ -55,11 +61,10 @@ void UGA_ComboAbility::GA_ComboAttackHandle()
 		if (dis < MotionWarpDistance)
 		{
 			//UE_LOG(LogTemp, Warning, TEXT("Distance: %f"), dis);
-			MotionWarpComp->AddOrUpdateWarpTargetFromLocation("Attack", WarpTarget);
+			MotionWarpComp->OnPreUpdate.RemoveDynamic(this, &UGA_ComboAbility::OnPlayerComboMotionWarpUpdate);
+			MotionWarpComp->OnPreUpdate.AddDynamic(this, &UGA_ComboAbility::OnPlayerComboMotionWarpUpdate);
 
-			UKismetSystemLibrary::DrawDebugCircle(
-				GetWorld(), 
-				WarpTarget, 50.f, 32, FLinearColor::Red, 2.f, 0.5f, FVector(1.f, 0.f, 0.f), FVector(0.f, 1.f, 0.f), false);
+
 		}
 
 		else
@@ -99,6 +104,102 @@ void UGA_ComboAbility::GA_ComboAttackHandle()
 	);
 	
 }
+
+void UGA_ComboAbility::OnPlayerComboMotionWarpUpdate(UMotionWarpingComponent* MWC)
+{
+	AActor* Avatar = GetAvatarActorFromActorInfo();
+
+
+	if (!CharRef)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UGA_ComboAbility::OnPlayerComboMotionWarpUpdate: CharRef is invaid"));
+		return;
+	}
+	FVector ActorLocation = Avatar->GetActorLocation();
+	FVector TargetLocation = CharRef->TargetActor->GetActorLocation();
+	FTransform ActorTran = Avatar->GetActorTransform();
+	FVector Directon = (ActorLocation - TargetLocation).GetSafeNormal();
+	FVector WarpLoc = TargetLocation + Directon * ComboWarpDistanceOffset + ActorTran.TransformVector(ComboWarpOffset);
+	FRotator WarpRot = (-Directon).Rotation();
+	WarpRot.Roll = 0;
+	WarpRot.Pitch = 0;
+	
+	
+	MWC->AddOrUpdateWarpTargetFromLocationAndRotation(
+		ComboWarpName,
+		WarpLoc,
+		WarpRot
+		);
+	//MWC->AddOrUpdateWarpTargetFromLocation(
+	//	ComboWarpName,
+	//	WarpLoc
+	//);
+
+	if(bComboDebugMode)
+		UKismetSystemLibrary::DrawDebugSphere(
+			GetWorld(),
+			WarpLoc,
+			50.f,
+			12,
+			FLinearColor::White,
+			2.f,
+			5.f
+		);
+}
+
+void UGA_ComboAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+{
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	UAbilityTask_WaitGameplayEvent* OnTraceHitSuccessTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+		this,
+		FGameplayTag::RequestGameplayTag("Event.Combat.TraceHitSucess")
+
+	);
+	OnTraceHitSuccessTask->EventReceived.AddUniqueDynamic(this, &UGA_ComboAbility::OnComboTraceHitHandle);
+	OnTraceHitSuccessTask->ReadyForActivation();
+}
+
+void UGA_ComboAbility::OnComboTraceHitHandle(FGameplayEventData Payload)
+{
+	const FGameplayAbilityTargetData* TargetData = Payload.TargetData.Get(0);
+	const FGameplayAbilityTargetData* HitData = Payload.TargetData.Get(1);
+	AActor* GAOnwer = GetAvatarActorFromActorInfo();
+	if (!TargetData || TargetData->GetScriptStruct() != FTraceMontageID::StaticStruct())
+	{
+		UE_LOG(LogTemp, Error, TEXT("UGA_ComboAbility::OnComboTraceHitHandle: NO TraceMontageID"));
+		return;
+	}
+
+	if (!HitData || HitData->GetScriptStruct() != FGameplayAbilityTargetData_SingleTargetHit::StaticStruct())
+	{
+		UE_LOG(LogTemp, Error, TEXT("UGA_ComboAbility::OnComboTraceHitHandle: NO Hit Result"));
+		return;
+	}
+	//添加伤害数值
+	FTraceMontageID* MontageIDTargetData = static_cast<FTraceMontageID*>(const_cast<FGameplayAbilityTargetData*>(TargetData));
+	FGameplayAbilityTargetData_SingleTargetHit* HitResultData = static_cast<FGameplayAbilityTargetData_SingleTargetHit*>(const_cast<FGameplayAbilityTargetData*>(HitData));
+	MontageIDTargetData->DamageAmout = DamageAmount;
+	MontageIDTargetData->ToTargetGameplayCueTag = ToTargetGameplayCueTag;
+	//添加GamePlayEffectContext
+	FGameplayEffectContextHandle HitContextHandle = MakeEffectContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
+	HitContextHandle.AddInstigator(GAOnwer, GAOnwer);
+	HitContextHandle.AddHitResult(HitResultData->HitResult);
+	Payload.ContextHandle = HitContextHandle;
+	const FHitResult Hit = UAbilitySystemBlueprintLibrary::GetHitResultFromTargetData(Payload.TargetData, 1);
+	AActor* HitActor = Hit.GetActor();
+	if (!HitActor)
+	{
+		return;
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("UGA_ComboAbility::OnComboTraceHitHandle: HitActor: %s"), *HitActor->GetName());
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+		HitActor,
+		FGameplayTag::RequestGameplayTag("Event.Combat.TakeHit"),
+		Payload
+	);
+}
+
 
 void UGA_ComboAbility::GA_FCombotInput()
 {

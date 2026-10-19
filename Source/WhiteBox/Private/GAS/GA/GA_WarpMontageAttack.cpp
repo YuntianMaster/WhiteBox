@@ -128,6 +128,8 @@ void UGA_WarpMontageAttack::WarpMontageHandler()
 // 播放不需要Warping的动画
 void UGA_WarpMontageAttack::NoWarpMontageHandle()
 {
+
+	UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::NoWarpMontageHandle starting!"));
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	if (!Avatar || !AttackMontage)
 	{
@@ -136,13 +138,15 @@ void UGA_WarpMontageAttack::NoWarpMontageHandle()
 	}
 	if (!GroundCheckHandle())
 	{
+
+		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::NoWarpMontageHandle GroundCheckHandle fail!"));
 		EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
 		return;
 
 	}
 	StartMovementModeChangeHandle();
 	
-	UAbilityTask_PlayMontageAndWait* MontageAttackTask =
+	/*UAbilityTask_PlayMontageAndWait**/ MontageAttackTask =
 		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 			this,
 			"MontageAttack",
@@ -151,7 +155,7 @@ void UGA_WarpMontageAttack::NoWarpMontageHandle()
 			NAME_None,
 			true,
 			1.f,
-			0.f,
+			StartTime,
 			false
 		);
 
@@ -163,10 +167,7 @@ void UGA_WarpMontageAttack::NoWarpMontageHandle()
 	MontageAttackTask->ReadyForActivation();
 	UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::NoWarpMontageHandle running!"));
 
-	MontageAttackTask->OnCompleted.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
-	MontageAttackTask->OnBlendOut.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
-	MontageAttackTask->OnCancelled.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
-	MontageAttackTask->OnInterrupted.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
+	
 
 	ACharacter* Character = Cast<ACharacter>(Avatar);
 	FAnimMontageInstance* Instance = Character->GetMesh()->GetAnimInstance()->GetActiveInstanceForMontage(AttackMontage);
@@ -178,6 +179,24 @@ void UGA_WarpMontageAttack::NoWarpMontageHandle()
 		PlayerTraceComponent->Trace_MontageInstanceID = MontageInstanceID;
 		PlayerTraceComponent->GA_WarpMontageAttack = this;
 	}
+
+	if (bIsCustomEndTime)
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			DelayEndAbilityHandle,
+			this,
+			&UGA_WarpMontageAttack::OnAttackCompleted,
+			EndTime,
+			false
+		);
+		return;
+
+	}
+
+	MontageAttackTask->OnCompleted.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
+	MontageAttackTask->OnCancelled.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
+	MontageAttackTask->OnInterrupted.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
+
 }
 
 void UGA_WarpMontageAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
@@ -186,6 +205,7 @@ void UGA_WarpMontageAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 
 	GetWorld()->GetTimerManager().ClearTimer(WaitTimeHandle);
+	GetWorld()->GetTimerManager().ClearTimer(DelayEndAbilityHandle);
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	ACharacter* Character = Cast<ACharacter>(Avatar);
 	if (Character)
@@ -208,7 +228,23 @@ void UGA_WarpMontageAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, 
 	}
 
 	if(!bIsEnemyAbility)
+	{
 		Cast<APawn>(CharRef)->bUseControllerRotationYaw = true;
+		CharRef->CameraManager->CameraPlayerFaceToTargetChangeHandle(true);
+		CharRef->CameraManager->CameraBoomArmValueChangeHandle(defaultArmStruct);
+	}
+	else
+	{
+		if(GA_TargetActor)
+		{
+			UE_LOG(LogTemp, Error, TEXT("  UGA_WarpMontageAttack::EndAbility: GA_TargetActor: %s"), *GA_TargetActor->GetName());
+			Cast<APlayerCharacter>(GA_TargetActor)->CameraManager->CameraPlayerFaceToTargetChangeHandle(true);
+			Cast<APlayerCharacter>(GA_TargetActor)->CameraManager->CameraBoomArmValueChangeHandle(defaultArmStruct);
+		}
+	
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("UGA_WarpMontageAttack::EndAbility"));
 }
 
 void UGA_WarpMontageAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -249,8 +285,12 @@ void UGA_WarpMontageAttack::ActivateAbility(const FGameplayAbilitySpecHandle Han
 	else
 	{
 		UMC = CharRef->GetComponentByClass<UCamerManagerComponent>();
-		if (bIsUnlockControlYaw)
+		if (bIsCameraFromMontage)
+		{
 			Cast<APawn>(CharRef)->bUseControllerRotationYaw = false;
+			UMC->CameraPlayerFaceToTargetChangeHandle(false);
+		}
+		
 		UE_LOG(LogTemp, Error, TEXT("UGA_WarpMontageAttack::ActivateAbility: no enemy ArmChange"));
 	}
 
@@ -278,12 +318,14 @@ void UGA_WarpMontageAttack::OnTraceHitHandle(FGameplayEventData Payload)
 
 	}
 
+	const FGameplayAbilityTargetData* TargetData = Payload.TargetData.Get(0);
 
 
-
-	const FTraceMontageID* Data =
-		static_cast<const FTraceMontageID*>(Payload.TargetData.Get(0));
+	FTraceMontageID* Data =
+		static_cast<FTraceMontageID*>(const_cast<FGameplayAbilityTargetData*>(TargetData));
 	Payload.EventMagnitude = DamageMagnitude;
+	Data->DamageAmout = DamageAmount;
+	Data->ToTargetGameplayCueTag = ToTargetGameplayCueTag;
 
 	FGameplayTag HitTag = 
 		bIsCriticalHit ? FGameplayTag::RequestGameplayTag("Event.Combat.TakeCriticalHit") : FGameplayTag::RequestGameplayTag("Event.Combat.TakeHit");
@@ -352,9 +394,20 @@ void UGA_WarpMontageAttack::UpdatePlayeRate(float DeltaTime)
 
 }
 
+void UGA_WarpMontageAttack::RemoveAttackMontageEndAbility()
+{
+	MontageAttackTask->OnCompleted.RemoveDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
+	MontageAttackTask->OnCancelled.RemoveDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
+	MontageAttackTask->OnInterrupted.RemoveDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
+}
+
 void UGA_WarpMontageAttack::SpicalHitReactionMontageHandle()
 {
 	SpicalHitSuccessBroadCast();
+
+	FVector TargetLocation = GA_TargetActor->GetActorLocation();
+	FVector AttackerLocation = GetAvatarActorFromActorInfo()->GetActorLocation();
+
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	if (bIsEnemyAbility)
 	{
@@ -377,7 +430,21 @@ void UGA_WarpMontageAttack::SpicalHitReactionMontageHandle()
 		UAnimInstance* AnimInst = ActorChar->GetMesh()->GetAnimInstance();
 		float Time = AnimInst->Montage_GetPosition(AttackMontage);
 
-		TargetActor->GetComponentByClass<USkeletalMeshComponent>()->GetAnimInstance()->Montage_Play(
+		if (bIsNeedFaceToAttacker)
+		{
+			FRotator FaceToAttacker = UKismetMathLibrary::FindLookAtRotation(TargetLocation, AttackerLocation);
+			FaceToAttacker.Roll = 0;
+			FaceToAttacker.Pitch = 0;
+			UE_LOG(LogTemp, Warning, TEXT("FaceToAttacker.Roll: %f"), FaceToAttacker.Roll);
+			TargetActor->SetActorRotation(FaceToAttacker);
+
+
+			
+
+
+		}
+
+		GA_TargetActor->GetComponentByClass<USkeletalMeshComponent>()->GetAnimInstance()->Montage_Play(
 			SpeicalHitReactionMontage,
 			1.f,
 			EMontagePlayReturnType::Duration,
@@ -402,6 +469,18 @@ void UGA_WarpMontageAttack::SpicalHitReactionMontageHandle()
 		float Time = AnimInst->Montage_GetPosition(AttackMontage);
 
 		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack: Player Time: %f"), Time);
+
+		if (bIsNeedFaceToAttacker)
+		{
+			FRotator FaceToAttacker = UKismetMathLibrary::FindLookAtRotation(TargetLocation, AttackerLocation);
+			FaceToAttacker.Roll = 0;
+			FaceToAttacker.Pitch = 0;
+			UE_LOG(LogTemp, Warning, TEXT("FaceToAttacker.Roll: %f"), FaceToAttacker.Roll);
+			TargetActor->SetActorRotation(FaceToAttacker);
+
+
+		}
+
 		TargetActor->GetComponentByClass<USkeletalMeshComponent>()->GetAnimInstance()->Montage_Play(
 			SpeicalHitReactionMontage,
 			1.f,
@@ -491,7 +570,7 @@ void UGA_WarpMontageAttack::WarpTarget_NOTRACKING()
 	UPlayerTraceComponent* PlayerTraceComponent = Avatar->GetComponentByClass<UPlayerTraceComponent>();
 	FVector ActorLocation = Avatar->GetActorLocation();
 	FVector EndLocation = ActorLocation + Avatar->GetActorRotation().RotateVector(EndWarpingLocation);
-	UAbilityTask_PlayMontageAndWait* MontageAttackTask =
+	/*UAbilityTask_PlayMontageAndWait**/ MontageAttackTask =
 		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 			this,
 			"MontageAttack",
@@ -500,7 +579,7 @@ void UGA_WarpMontageAttack::WarpTarget_NOTRACKING()
 			NAME_None,
 			true,
 			1.f,
-			0.f,
+			StartTime,
 			false
 		);
 
@@ -539,15 +618,31 @@ void UGA_WarpMontageAttack::WarpTarget_NOTRACKING()
 	WarpRot.Roll = 0;
 	WarpRot.Pitch = 0;
 
-	UE_LOG(LogTemp, Warning, TEXT("Attacking!"));
+	UE_LOG(LogTemp, Warning, TEXT("EQSQueryLocation: %s"), *EQSQueryLocation.ToString());
 	MWcomp->AddOrUpdateWarpTargetFromLocationAndRotation(AttackWarpingName, WarpLoc, WarpRot);
 	MontageAttackTask->ReadyForActivation();
 	if (PlayerTraceComponent)
 	{
 		PlayerTraceComponent->GA_WarpMontageAttack = this;
 	}
+
+	if (bIsCustomEndTime)
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			DelayEndAbilityHandle,
+			this,
+			&UGA_WarpMontageAttack::OnAttackCompleted,
+			EndTime,
+			false
+		);
+
+		
+
+		return;
+
+	}
+	
 	MontageAttackTask->OnCompleted.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
-	MontageAttackTask->OnBlendOut.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
 	MontageAttackTask->OnCancelled.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
 	MontageAttackTask->OnInterrupted.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
 	//！没有角色返回逻辑！
@@ -699,7 +794,7 @@ void UGA_WarpMontageAttack::WarpTarget_TRACKING()
 	FVector ActorLocation = Avatar->GetActorLocation();
 
 	UE_LOG(LogTemp, Warning, TEXT("Attacking start!"));
-	UAbilityTask_PlayMontageAndWait* MontageAttackTask =
+/*	UAbilityTask_PlayMontageAndWait**/ MontageAttackTask =
 		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 			this,
 			"MontageAttack",
@@ -708,7 +803,7 @@ void UGA_WarpMontageAttack::WarpTarget_TRACKING()
 			NAME_None,
 			true,
 			1.f,
-			0.f,
+			StartTime,
 			false
 		);
 
@@ -718,8 +813,22 @@ void UGA_WarpMontageAttack::WarpTarget_TRACKING()
 	{
 		PlayerTraceComponent->GA_WarpMontageAttack = this;
 	}
+
+
+	if (bIsCustomEndTime)
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			DelayEndAbilityHandle,
+			this,
+			&UGA_WarpMontageAttack::OnAttackCompleted,
+			EndTime,
+			false
+		);
+		return;
+
+	}
+
 	MontageAttackTask->OnCompleted.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
-	MontageAttackTask->OnBlendOut.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
 	MontageAttackTask->OnCancelled.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
 	MontageAttackTask->OnInterrupted.AddUniqueDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
 

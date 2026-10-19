@@ -13,8 +13,69 @@ void UGA_TakeHit::OnTakeHitHandle(const FGameplayEventData& EventData)
 	UAbilitySystemComponent* OnwerASC =  GetAbilitySystemComponentFromActorInfo();
 
 	FGameplayTag ParryTag = FGameplayTag::RequestGameplayTag("Stats.Parrying");
+	FGameplayTag BlockingTag = FGameplayTag::RequestGameplayTag("Stats.Blocking");
 	FGameplayTag PerfectDodgeTag = FGameplayTag::RequestGameplayTag("Stats.PerfectDodge");
 	FGameplayTag DodgeTag = FGameplayTag::RequestGameplayTag("Stats.Dodge");
+	FGameplayTag SuperAttackBuffTag = FGameplayTag::RequestGameplayTag("Buff.SuperAttack");
+	FGameplayTag SuperParryTag = FGameplayTag::RequestGameplayTag("Stats.SuperParry");
+	
+	UE_LOG(LogTemp, Warning, TEXT("UGA_TakeHit::OnTakeHitHandle : TargetASC Instigator: %s"), *EventData.Instigator.GetName());
+
+	UAbilitySystemComponent* TargetASC = nullptr;
+	if(EventData.Instigator)
+		TargetASC = EventData.Instigator->GetComponentByClass<UAbilitySystemComponent>();
+
+	
+
+
+	if (TargetASC->HasMatchingGameplayTag(SuperAttackBuffTag)&& TargetASC)
+	{
+		if (OnwerASC->HasMatchingGameplayTag(SuperParryTag))
+		{
+			AActor* SuperParryEventTarget = const_cast<AActor*>(EventData.Instigator.Get());
+			UE_LOG(LogTemp, Warning, TEXT("UGA_TakeHit::OnTakeHitHandle : SuperParry Owner=%s SendToInstigator=%s Tag=GamePlayAbility.Combat.SuperParry"),
+				*GetNameSafe(Onwer),
+				*GetNameSafe(SuperParryEventTarget));
+			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+				SuperParryEventTarget,
+				FGameplayTag::RequestGameplayTag("GamePlayAbility.Combat.SuperParry"),
+				EventData
+
+			);
+			UE_LOG(LogTemp, Warning, TEXT("UGA_TakeHit::OnTakeHitHandle : SuperParry SendGameplayEventToActor returned"));
+			EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
+			return;
+		}
+
+		else {
+			UE_LOG(LogTemp, Warning, TEXT("UGA_TakeHit::OnTakeHitHandle : SuperParryFail"));
+			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+				Onwer,
+				FGameplayTag::RequestGameplayTag("Event.Combat.HitReaction"),
+				EventData
+
+			);
+			EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
+			return;
+
+		}
+	}
+
+
+	if (OnwerASC->HasMatchingGameplayTag(BlockingTag))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("OnTakeHitHandle : Blocking"));
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+			Onwer,
+			FGameplayTag::RequestGameplayTag("Event.Combat.Block"),
+			EventData
+		);
+
+		EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
+		return;
+
+	}
+
 
 	if (OnwerASC->HasMatchingGameplayTag(ParryTag))
 	{

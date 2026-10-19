@@ -46,7 +46,7 @@ protected:
 	UFUNCTION()
 	void OnMotionWarpUpdate(class UMotionWarpingComponent* UWC);
 	UFUNCTION()
-	void OnTraceHitHandle(FGameplayEventData Payload);
+	virtual void OnTraceHitHandle(FGameplayEventData Payload);
 	//Tick����MontagePlayRate
 	UFUNCTION()
 	void UpdatePlayeRate(float DeltaTime);
@@ -54,13 +54,18 @@ protected:
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnTraceSuccessBroadCast(FGameplayEventData Payload);
+
+	void RemoveAttackMontageEndAbility();
 	
+	
+
 		
 protected:
 
 	//UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	//bool isAutoEnAblitiy{ true };
-
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Damage")
+	float DamageAmount{ 5.f };
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GroundCheck")
 	bool bIsNeedGroundCheck{false};
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bisNeedGroundCheck"), Category = "GroundCheck")
@@ -80,7 +85,7 @@ protected:
 	float WaitTime{ 1.f};
 	FTimerHandle WaitTimeHandle;
 
-
+	FTimerHandle DelayEndAbilityHandle;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Montage")
 	UAnimMontage* AttackMontage;
@@ -98,8 +103,10 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Warp")
 	bool bIsActorTarget{ true };
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	float PlayRate{1.f};
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Montage")
+	float PlayRate{1.f};	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Montage")
+	float StartTime{ 0.f };
 	class UMotionWarpingComponent* MWcomp;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Warp")
 	bool bTrackTarget{ true };
@@ -116,18 +123,34 @@ protected:
 	bool bIsSpecialHitReaction{ false };
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "SpecialHitReaction"), Category = "SpecialHitReaction")
 	UAnimMontage* SpeicalHitReactionMontage;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "SpecialHitReaction"), Category = "SpecialHitReaction")
+	bool bIsNeedFaceToAttacker;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SpecialBoomArm")
+	FCameraArmStruct defaultArmStruct;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere,  Category = "SpecialBoomArm")
 	FCameraArmStruct ArmValue;
+
+	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SpecialBoomArm")
 	bool bIsStartMontageWithBoomChange{ false };
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SpecialBoomArm")
-	bool bIsUnlockControlYaw{false}; //特殊镜头时，解锁Yaw
+	bool bIsCameraFromMontage{false}; //特殊镜头时，解锁Yaw
 	
 	void SpicalHitReactionMontageHandle();
 	UFUNCTION(BlueprintImplementableEvent)
 	void SpicalHitSuccessBroadCast();
-
+	UPROPERTY()
 	AActor* GA_TargetActor;
+
+	class UAbilityTask_PlayMontageAndWait* MontageAttackTask;
+
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "EndAbilityPara")
+	bool bIsCustomEndTime{ false };
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bIsCustomEndTime"), Category = "EndAbilityPara")
+	float EndTime = { 8.f };
 
 
 public:

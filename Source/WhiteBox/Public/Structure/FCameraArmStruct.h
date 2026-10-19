@@ -14,8 +14,14 @@ struct WHITEBOX_API FCameraArmStruct
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
 	float MaxBoomLength = 2500.f;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
-	float BoomHeight = 50.f;      // BoomOffset.Z
+	float MinBoomHeight = 100.f;      // BoomOffset.Z
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
-	float BoomLatera = 80.f;      // BoomOffset.Y
+	float MaxBoomHeight = 200.f;      // BoomOffset.Z
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
+	float MinBoomLatera = 80.f;      // BoomOffset.Y
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "LockTarget")
+	float MaxBoomLatera = 200.f;      // BoomOffset.Z
 
 };
+
+

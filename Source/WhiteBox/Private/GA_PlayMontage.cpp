@@ -2,6 +2,7 @@
 
 
 #include "GA_PlayMontage.h"
+#include "GameFramework/Character.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 
 void UGA_PlayMontage::PlayMontageTask()
@@ -30,4 +31,12 @@ void UGA_PlayMontage::PlayMontageTask()
 void UGA_PlayMontage::OnMontageEndHandle()
 {
 	EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
+}
+
+void UGA_PlayMontage::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	Super::EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
+	AActor* PlayerActor = GetAvatarActorFromActorInfo();
+	Cast<ACharacter>(PlayerActor)->GetMesh()->GetAnimInstance()->Montage_Stop(0.1f,AnimMontage);
+		
 }

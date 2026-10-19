@@ -24,6 +24,11 @@ DECLARE_MULTICAST_DELEGATE_OneParam(
 	FCameraArmStruct /*ArmStruct*/
 );
 
+DECLARE_MULTICAST_DELEGATE_OneParam(
+	FOnCameraPlayerFaceToTargetChangeSignature,
+	bool /*ArmStruct*/
+);
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class WHITEBOX_API UCamerManagerComponent : public UActorComponent
 {
@@ -44,6 +49,8 @@ public:
 	void CameraModeChangeHandle(UPARAM(meta = (Categories = "Camera")) E_LockCameraMode CameraLockMode);
 	UFUNCTION(BlueprintCallable)
 	void CameraBoomArmValueChangeHandle(FCameraArmStruct ArmStruct);
+	UFUNCTION(BlueprintCallable)
+	void CameraPlayerFaceToTargetChangeHandle(bool bFaceTo);
 
 public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -52,6 +59,7 @@ public:
 	FOnCameraChangeSignature FOnCameraChangeDelegate;
 	FOnCameraLockModeChangeSignature FOnCameraLockModeChangeDelegate;
 	FOnCameraBoomArmValueChangeSignature FOnCameraBoomArmValueChangeDelegate;
+	FOnCameraPlayerFaceToTargetChangeSignature FOnCameraPlayerFacetoTargetDelegate;
 	UPROPERTY(BlueprintReadWrite)
 	FVector BoomOffset;
 

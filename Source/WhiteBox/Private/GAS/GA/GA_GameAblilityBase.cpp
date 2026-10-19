@@ -12,7 +12,10 @@
 #include "EnvironmentQuery/EnvQueryManager.h"
 #include "AbilitySystemGlobals.h"
 #include "AbilitySystemComponent.h"
+#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/GameplayAbilityTargetTypes.h"
+#include "Structure/FGASStucts.h"
+#include "Components/StateTreeAIComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 
 UGA_GameAblilityBase::UGA_GameAblilityBase()
@@ -144,6 +147,24 @@ void UGA_GameAblilityBase::TryCacheCharacterRefs(const FGameplayAbilityActorInfo
 	}
 }
 
+
+
+
+void UGA_GameAblilityBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+	UAbilitySystemComponent* OwnerASC = GetAvatarActorFromActorInfo()->GetComponentByClass<UAbilitySystemComponent>();
+
+	if (bIsRemoveGE_SelfAtEnd && SelfActiveGEHandle.IsValid())
+	{
+		OwnerASC->RemoveActiveGameplayEffect(SelfActiveGEHandle, -1);
+		SelfActiveGEHandle.Invalidate();
+	}
+		
+
+
+}
+
 void UGA_GameAblilityBase::RunCoverEQS()
 {
 	EQSQueryLocation = FVector::ZeroVector;
@@ -189,7 +210,7 @@ void UGA_GameAblilityBase::OnEQSFinished(TSharedPtr<FEnvQueryResult> Result)
 
 
 	EQSQueryLocation = Result->GetItemAsLocation(0);
-	UE_LOG(LogTemp, Warning, TEXT("EQSQueryLocation: %s"), *EQSQueryLocation.ToString());
+	UE_LOG(LogTemp, Warning, TEXT("UGA_GameAblilityBase::EQSQueryLocation: %s"), *EQSQueryLocation.ToString());
 	OnCoverEQSFinished(EQSQueryLocation);
 }
 
@@ -205,7 +226,7 @@ void UGA_GameAblilityBase::ApplyGEToSelf(FGameplayTag DataTag)
 		return;
 	}
 	SpecHandle.Data->SetByCallerTagMagnitudes.Add(DataTag, GE_Self_Magnitude);
-	OwnerASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), OwnerASC);
+	SelfActiveGEHandle = OwnerASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), OwnerASC);
 
 }
 
@@ -285,6 +306,29 @@ void UGA_GameAblilityBase::ApplyGEToTarget(FGameplayEventData Playload, FGamepla
 	SpecHandle.Data->SetSetByCallerMagnitude(DataTag, GE_ToTarget_Magnitude);
 	OwnerASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
 }
+
+void UGA_GameAblilityBase::SendStateEventHandle(AActor* EventActor)
+{
+	
+	AEnemyCharacter* EnemyCharacter = Cast<AEnemyCharacter>(EventActor);
+	if (!EnemyCharacter) {
+		UE_LOG(LogTemp, Error, TEXT("UGA_GameAblilityBase::SendStateEventHandle is not Enemy Actor"));
+		return;
+	}
+
+	AEnemyAIController* AIController = Cast<AEnemyAIController>(EnemyCharacter->GetController());
+	FStateTreeEvent StateTreeEvent;
+
+	for (FGameplayTag Tag : StateTreeEventTagContainer)
+	{
+		StateTreeEvent.Tag = Tag;
+		AIController->StateTreeAIComp->SendStateTreeEvent(StateTreeEvent);
+	}
+
+
+}
+
+
 
 
 

@@ -154,13 +154,17 @@ namespace UE::Cameras
 		FVector GetBoomArm(const FCameraNodeEvaluationResult& Result) const;
 		void OnCameraLockModeChanged(E_LockCameraMode CameraLockMode);
 		void OnCameraArmValueChanged(FCameraArmStruct BoomArmValue);
+		void OnCameraPlayerFaceToTargetChanged(bool bFace);
 		void UnbindLockModeDelegate();
 		void CaculateFocusLocation(E_LockCameraMode CameraLockMode,const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult);
 		void DeadZoneHandle(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult, FVector TableLocation, FVector CALocation);
 		void CABoomArm(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult);
+		void CAFollowBoomArm(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult);
 		float GetTargetDistance(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult);
 		void ComputeRawOffset(AActor* PlayerOwner, FVector TargetLoc);
 		bool CaculateCameraRotate(const FVector& PlayerLoc,const FVector& TargetLoc,const FVector& BoomArm, FRotator& OutRot);
+		void FInterConstArmStructChange(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult,
+			FCameraArmStruct CurrentValue, FCameraArmStruct NeedChangeValue);
 
 	private:
 		UCamerManagerComponent* UMC;
@@ -178,9 +182,13 @@ namespace UE::Cameras
 		FVector EnterLockOffsetFocusLocation;
 		FDelegateHandle LockModeChangedHandle;
 		FDelegateHandle BoomArmValueChangedHandle;
+		FDelegateHandle FaceToTargetChangedHandle;
 
 		//BoomArm
 		FCameraArmStruct CurrentArmValue;
+		FCameraArmStruct NeedChangeArmValue;
+		TEnumAsByte<E_BoomArmComptueMode> BoomArmMode = E_BoomArmComptueMode::FollowPlayer;
+		bool bIsFaceToTarget{ true };
 
 		//冻结参数
 		float LastOrbitYaw = 0.f;
@@ -224,8 +232,13 @@ namespace UE::Cameras
 
 	void FCaBoomOffsetInLockEvaluator::OnCameraArmValueChanged(FCameraArmStruct BoomArmValue)
 	{
-		CurrentArmValue = BoomArmValue;
+		NeedChangeArmValue = BoomArmValue;
 		//UE_LOG(LogTemp, Error, TEXT("FCaBoomOffsetInLockEvaluator::CurrentCameraArmValue: %f"), BoomArmValue.BoomHeight);
+	}
+
+	void FCaBoomOffsetInLockEvaluator::OnCameraPlayerFaceToTargetChanged(bool bFace)
+	{
+		bIsFaceToTarget = bFace;
 	}
 
 	void FCaBoomOffsetInLockEvaluator::UnbindLockModeDelegate()
@@ -326,8 +339,8 @@ namespace UE::Cameras
 
 		DeadZoneHandle(Params,OutResult, TableFocusLocation, CAFocusLocation);
 
-		//UE_LOG(LogTemp, Error, TEXT(" FCaBoomOffsetInLockEvaluator::CAFocusLocation : %s"), *CAFocusLocation.ToString());
-		//UE_LOG(LogTemp, Error, TEXT(" FCaBoomOffsetInLockEvaluator::TableFocusLocation : %s"), *TableFocusLocation.ToString());
+	/*	UE_LOG(LogTemp, Error, TEXT(" FCaBoomOffsetInLockEvaluator::CAFocusLocation : %s"), *CAFocusLocation.ToString());
+		UE_LOG(LogTemp, Error, TEXT(" FCaBoomOffsetInLockEvaluator::TableFocusLocation : %s"), *TableFocusLocation.ToString());*/
 
 
 
@@ -336,7 +349,24 @@ namespace UE::Cameras
 	void FCaBoomOffsetInLockEvaluator::DeadZoneHandle(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult,FVector TableLocation,FVector CALocation)
 	{
 		const FVector CamLoc = OutResult.CameraPose.GetLocation();
+
+		/*FRotator CamRot;
+		switch (BoomArmMode)
+		{
+		case E_BoomArmComptueMode::FollowPlayer:
+
+			CAFollowBoomArm(Params, OutResult);
+			break;
+		case E_BoomArmComptueMode::Surrounding:
+			CABoomArm(Params, OutResult);
+			break;
+		default:
+			break;
+		}*/
+
+
 		const FRotator CamRot = OutResult.CameraPose.GetRotation();
+		//UE_LOG(LogTemp, Warning, TEXT("CamRot:%s"), *CamRot.ToString());
 		const float FOVDeg = OutResult.CameraPose.GetFieldOfView();
 		float Aspect = 16.f / 9.f;
 		if (APlayerController* PC = Params.EvaluationContext->GetPlayerController())
@@ -548,15 +578,15 @@ namespace UE::Cameras
 				// 屏幕上希望 CA 从 ScreenTarget 移到 DesiredScreen：
 				// 用同一比例把 Table 往 CA 推（近似 UE 的 reframing 量）
 				const double OldD = FMath::Max(DistanceToGo, UE_DOUBLE_SMALL_NUMBER);
-				UE_LOG(LogTemp, Warning, TEXT("NewDistanceToGo: %f"), NewDistanceToGo);
+			/*	UE_LOG(LogTemp, Warning, TEXT("NewDistanceToGo: %f"), NewDistanceToGo);
 				UE_LOG(LogTemp, Warning, TEXT("OldD: %f"), OldD);
-				UE_LOG(LogTemp, Warning, TEXT("NewDistanceToGo / OldD: %f"), NewDistanceToGo / OldD);
+				UE_LOG(LogTemp, Warning, TEXT("NewDistanceToGo / OldD: %f"), NewDistanceToGo / OldD);*/
 				const double Alpha = FMath::Clamp(1.0 - (NewDistanceToGo / OldD), 0.0, 1.0);
 				CAFocusLocation = FMath::Lerp(TableLocation, CALocation, Alpha);
 
-				UE_LOG(LogTemp, Warning, TEXT("TableLocation: %s"), *TableLocation.ToString());
+			/*	UE_LOG(LogTemp, Warning, TEXT("TableLocation: %s"), *TableLocation.ToString());
 				UE_LOG(LogTemp, Warning, TEXT("CALocation: %s"), *CALocation.ToString());
-				UE_LOG(LogTemp, Warning, TEXT("CAFocusLocation: %s"), *CAFocusLocation.ToString());
+				UE_LOG(LogTemp, Warning, TEXT("CAFocusLocation: %s"), *CAFocusLocation.ToString());*/
 
 				if (UVector3dCameraVariable* Var = BoomOffsetNode->FocusTarget.Variable)
 				{
@@ -566,27 +596,6 @@ namespace UE::Cameras
 			}
 
 		}
-
-		/*if (FMath::Abs(DeltaUV.X) > BoomOffsetNode->DeadHalf || FMath::Abs(DeltaUV.Y) > BoomOffsetNode->DeadHalf)
-		{
-			CAFocusLocation = UKismetMathLibrary::VInterpTo_Constant(
-				TableLocation, CALocation, Params.DeltaTime, BoomOffsetNode->DeadZoneRecoverySpeed);
-
-			if(FMath::Abs(DeltaUV.X)> BoomOffsetNode->SoftHalf || FMath::Abs(DeltaUV.Y) > BoomOffsetNode->SoftHalf)
-			{
-				CAFocusLocation = UKismetMathLibrary::VInterpTo_Constant(
-					TableLocation, CALocation, Params.DeltaTime, BoomOffsetNode->SoftZoneRecoverySpeed);
-			}
-		}
-		
-		if (UVector3dCameraVariable* Var = BoomOffsetNode->FocusTarget.Variable)
-		{
-			OutResult.VariableTable.SetValue(Var, CAFocusLocation);
-		}*/
-
-
-
-
 	}
 
 	void FCaBoomOffsetInLockEvaluator::CABoomArm(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult)
@@ -698,7 +707,7 @@ namespace UE::Cameras
 
 		auto BoomOffset = [&](float Lenght)->FVector
 			{
-				return FVector(-Lenght,CurrentArmValue.BoomLatera , CurrentArmValue.BoomHeight);
+				return FVector(-Lenght,CurrentArmValue.MinBoomLatera , CurrentArmValue.MinBoomHeight);
 			};
 
 		auto CameraPos = [&](float Lenght)->FVector
@@ -824,7 +833,7 @@ namespace UE::Cameras
 	
 	
 
-		FVector FinalBoomOffset = FVector(-Hi, CurrentArmValue.BoomLatera, CurrentArmValue.BoomHeight);
+		FVector FinalBoomOffset = FVector(-Hi, CurrentArmValue.MinBoomLatera, CurrentArmValue.MinBoomHeight);
 		float BoomZoomSpeed = BoomZoomSpeedReader.Get(OutResult.VariableTable);
 		FinalBoomOffset = UKismetMathLibrary::VInterpTo_Constant(CurrentBoom, FinalBoomOffset, Params.DeltaTime, BoomZoomSpeed);
 	
@@ -927,6 +936,203 @@ namespace UE::Cameras
 		UE_LOG(LogTemp, Warning, TEXT("CamerLoc: %s"), *OutResult.CameraPose.GetLocation().ToString());*/
 
 
+	}
+
+	void FCaBoomOffsetInLockEvaluator::CAFollowBoomArm(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult)
+	{
+		const UCaBoomOffsetInLock* BoomOffsetNode = GetCameraNodeAs<UCaBoomOffsetInLock>();
+		if (!BoomOffsetNode)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockEvaluator::OnRun: BoomOffsetNode is null"));
+			return;
+		}
+		UObject* ContextOwner = Params.EvaluationContext->GetOwner();
+		AActor* OwnerActor = nullptr;
+		if (UActorComponent* ContextComponent = Cast<UActorComponent>(ContextOwner))
+		{
+			OwnerActor = ContextComponent->GetOwner();
+		}
+		else
+		{
+			OwnerActor = Cast<AActor>(ContextOwner);
+		}
+
+		APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(OwnerActor);
+		if (!PlayerCharacter)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockEvaluator::OnRun: ContextOwner is not APlayerCharacter"));
+			return;
+		}
+
+		AActor* TargetActor = PlayerCharacter->TargetActor;
+		if (!TargetActor)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockEvaluator::OnRun: TargetActor is null"));
+			return;
+		}
+
+		
+
+		const float MaxPitch = MaxPitchReader.Get(OutResult.VariableTable);
+		const float MinPitch = MinPitchReader.Get(OutResult.VariableTable);
+	
+
+		float Margin = BoomOffsetNode->FramingSize;
+
+
+
+		const FVector PlayerLocation = PlayerCharacter->GetActorLocation();
+		const FTransform PlayerTrans = PlayerCharacter->GetTransform();
+		const FVector TargetLocation = TargetActor->GetActorLocation();
+		const FVector FocusLocation = FocusLocationReader.Get(OutResult.VariableTable);
+		
+
+		//UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockEvaluator::CAFollowBoomArm:TargetLocation:%s"),*FocusLocation.ToString());
+		PlayerCharacter->bUseControllerRotationYaw = false;
+
+		const float FieldOfView = OutResult.CameraPose.GetFieldOfView();
+		float AspectRatio = 16.f / 9.f;
+		if (APlayerController* PlayerController = Params.EvaluationContext->GetPlayerController()) {
+
+			if (const ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer())
+			{
+				if (LocalPlayer->ViewportClient) {
+
+					FVector2D ViewportSize;
+					LocalPlayer->ViewportClient->GetViewportSize(ViewportSize);
+					if (ViewportSize.Y > 0) {
+
+						AspectRatio = ViewportSize.X / ViewportSize.Y;
+					}
+				}
+			}
+
+		}
+
+		auto BoomOffset = [&](float Lenght)->FVector
+			{
+				return FVector(-Lenght, CurrentArmValue.MinBoomLatera, CurrentArmValue.MinBoomHeight);
+			};
+
+		auto CameraPos = [&](float Lenght)->FVector
+			{
+				return PlayerTrans.TransformPosition(BoomOffset(Lenght));
+			};
+
+		auto ForwardAfterFrame = [&](float Lenght)->FVector
+			{
+				FVector CameraLocation = CameraPos(Lenght);
+				FRotator ROT = UKismetMathLibrary::FindLookAtRotation(CameraLocation, FocusLocation);
+				return ROT.Vector();
+			};
+
+		auto RightAfterFrame = [&](float Lenght)->FVector
+			{
+				FVector CameraLocation = CameraPos(Lenght);
+				FRotator ROT = UKismetMathLibrary::FindLookAtRotation(CameraLocation, FocusLocation);
+				return FRotationMatrix(ROT).GetScaledAxis(EAxis::Y);
+			};
+
+		auto UpAfterFrame = [&](float Lenght)->FVector
+			{
+				FVector CameraLocation = CameraPos(Lenght);
+				FRotator ROT = UKismetMathLibrary::FindLookAtRotation(CameraLocation, FocusLocation);
+				return FRotationMatrix(ROT).GetScaledAxis(EAxis::Z);
+			};
+
+		const float HalfV = FMath::DegreesToRadians(FieldOfView / 2);
+		const float HalfH = FMath::Atan(FMath::Tan(HalfV) * AspectRatio);
+		const float TanH = FMath::Tan(HalfH);
+		const float TanV = FMath::Tan(HalfV);
+		const float SafeH = TanH * Margin;
+		const float SafeV = TanV * Margin;
+
+
+		TArray<FVector, TInlineAllocator<16>> TargetPts;
+
+		TargetPts.Add(PlayerLocation + FVector(0, 0, BoomOffsetNode->PlayerHalfHeight));
+		TargetPts.Add(PlayerLocation - FVector(0, 0, BoomOffsetNode->PlayerHalfHeight));
+		TargetPts.Add(TargetLocation + FVector(0, 0, BoomOffsetNode->EnemyHalfHeight));
+		TargetPts.Add(TargetLocation - FVector(0, 0, BoomOffsetNode->EnemyHalfHeight));
+
+		//const FVector CamLoc = OutResult.CameraPose.GetLocation();
+		//const FRotator CamRot = OutResult.CameraPose.GetRotation();
+		//const FTransform CamTM(CamRot, CamLoc);
+
+		TargetPts.Add(PlayerLocation - FVector(0, BoomOffsetNode->PlayerHalfWeight, 0));
+		TargetPts.Add(PlayerLocation + FVector(0, BoomOffsetNode->PlayerHalfWeight, 0));
+		TargetPts.Add(TargetLocation + FVector(0, BoomOffsetNode->EnemyHalfWeight, 0));
+		TargetPts.Add(TargetLocation - FVector(0, BoomOffsetNode->EnemyHalfWeight, 0));
+
+
+
+
+
+		auto Fits = [&](float Length)->bool {
+
+			FVector CamLoc = CameraPos(Length);
+
+			auto Inside = [&](FVector Checkloc)->bool {
+				const FVector Rel = Checkloc - CamLoc;
+				const float Depth = FVector::DotProduct(Rel, ForwardAfterFrame(Length));
+				if (Depth <= KINDA_SMALL_NUMBER)
+				{
+					return false;
+				}
+				const float r = FMath::Abs(FVector::DotProduct(Rel, RightAfterFrame(Length)));
+				const float u = FMath::Abs(FVector::DotProduct(Rel, UpAfterFrame(Length)));
+
+				return r <= Depth * SafeH && u <= Depth * SafeV;
+				};
+
+
+			for (const FVector& Pt : TargetPts) {
+
+				if (!Inside(Pt))
+				{
+					return false;
+				}
+
+			}
+			return true;
+			};
+
+
+
+
+
+		float Hi = CurrentArmValue.MaxBoomLength;
+		float Lo = CurrentArmValue.MinBoomLength;
+
+
+		for (int i = 0; i < 20; ++i)
+		{
+			const float Mid = 0.5f * (Lo + Hi);
+			if (Fits(Mid))
+			{
+				Hi = Mid;
+			}
+			else
+			{
+				Lo = Mid;
+			}
+		}
+
+		/*UE_LOG(LogTemp, Warning, TEXT("Hi: %f"), Hi);
+		UE_LOG(LogTemp, Warning, TEXT(" CurrentArmValue.MinBoomLength: %f"), CurrentArmValue.MinBoomLength);
+		UE_LOG(LogTemp, Warning, TEXT(" CurrentArmValue.MinBoomLength: %f"), CurrentArmValue.MaxBoomLength);*/
+
+		FRotator PlayerR = UKismetMathLibrary::FindLookAtRotation(PlayerLocation, TargetActor->GetActorLocation());
+		FVector CamP = PlayerTrans.TransformPosition(FVector(-Hi, CurrentArmValue.MinBoomLatera, CurrentArmValue.MinBoomHeight));
+		FRotator CamR = UKismetMathLibrary::FindLookAtRotation(CamP, FocusLocation);
+
+		OutResult.CameraPose.SetLocation(CamP);
+		OutResult.CameraPose.SetRotation(CamR);
+		PlayerR.Pitch = 0;
+		PlayerR.Roll = 0;
+		if(bIsFaceToTarget)
+			OwnerActor->SetActorRotation(PlayerR);
+		CaculateFocusLocation(CurrentCameraLockMode, Params, OutResult);
 	}
 
 	float FCaBoomOffsetInLockEvaluator::GetTargetDistance(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult)
@@ -1046,6 +1252,30 @@ namespace UE::Cameras
 		return false;
 	}
 
+	void FCaBoomOffsetInLockEvaluator::FInterConstArmStructChange(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult,
+		FCameraArmStruct CurrentValue, FCameraArmStruct NeedChangeValue)
+	{
+		
+		FVector CurrentMin = FVector(CurrentValue.MinBoomLength, CurrentValue.MinBoomLatera, CurrentValue.MinBoomHeight);
+		FVector CurrentMax = FVector(CurrentValue.MaxBoomLength, CurrentValue.MaxBoomLatera, CurrentValue.MaxBoomHeight);
+		FVector NeedChangeValueMin = FVector(NeedChangeValue.MinBoomLength, NeedChangeValue.MinBoomLatera, NeedChangeValue.MinBoomHeight);
+		FVector NeedChangeValueMax = FVector(NeedChangeValue.MaxBoomLength, NeedChangeValue.MaxBoomLatera, NeedChangeValue.MaxBoomHeight);
+		
+		float BoomZoomSpeed = BoomZoomSpeedReader.Get(OutResult.VariableTable);
+
+		FVector FinalMin = UKismetMathLibrary::VInterpTo_Constant(CurrentMin, NeedChangeValueMin, Params.DeltaTime, BoomZoomSpeed);
+		FVector FinalMax = UKismetMathLibrary::VInterpTo_Constant(CurrentMax, NeedChangeValueMax, Params.DeltaTime, BoomZoomSpeed);
+
+
+		CurrentArmValue.MinBoomLength = FinalMin.X;
+		CurrentArmValue.MaxBoomLength = FinalMax.X;
+		CurrentArmValue.MinBoomLatera = FinalMin.Y;
+		CurrentArmValue.MaxBoomLatera = FinalMax.Y;
+		CurrentArmValue.MinBoomHeight = FinalMin.Z;
+		CurrentArmValue.MaxBoomHeight = FinalMax.Z;
+		
+	}
+
 
 
 	
@@ -1066,6 +1296,7 @@ namespace UE::Cameras
 		bOrbitYawInitialized = false;
 
 		CurrentArmValue = BoomOffsetNode->InitalArmValue;
+		NeedChangeArmValue = BoomOffsetNode->InitalArmValue;
 		// 参数若被 Variable / Interface 驱动，.Value 可能是 0；default 在 Variable 上，需用 Reader。
 		MinPitchReader.Initialize(BoomOffsetNode->MinPitch);
 		MaxPitchReader.Initialize(BoomOffsetNode->MaxPitch);
@@ -1119,7 +1350,7 @@ namespace UE::Cameras
 		//
 
 	
-		CaculateCameraRotate(PlayerLocation, IntLocation, FVector(-BoomOffsetNode->InitalArmValue.MinBoomLength, BoomOffsetNode->InitalArmValue.BoomLatera, BoomOffsetNode->InitalArmValue.BoomHeight), LastCameraRot);
+		CaculateCameraRotate(PlayerLocation, IntLocation, FVector(-BoomOffsetNode->InitalArmValue.MinBoomLength, BoomOffsetNode->InitalArmValue.MinBoomLatera, BoomOffsetNode->InitalArmValue.MinBoomHeight), LastCameraRot);
 
 
 
@@ -1127,12 +1358,26 @@ namespace UE::Cameras
 		UMC = OwnerActor->GetComponentByClass<UCamerManagerComponent>();
 		LockModeChangedHandle = UMC->FOnCameraLockModeChangeDelegate.AddRaw(this, &FCaBoomOffsetInLockEvaluator::OnCameraLockModeChanged);
 		BoomArmValueChangedHandle = UMC->FOnCameraBoomArmValueChangeDelegate.AddRaw(this, &FCaBoomOffsetInLockEvaluator::OnCameraArmValueChanged);
-	
+		FaceToTargetChangedHandle = UMC->FOnCameraPlayerFacetoTargetDelegate.AddRaw(this, &FCaBoomOffsetInLockEvaluator::OnCameraPlayerFaceToTargetChanged);
 	}
 
 	void FCaBoomOffsetInLockEvaluator::OnRun(const FCameraNodeEvaluationParams& Params, FCameraNodeEvaluationResult& OutResult)
 	{
-		CABoomArm(Params, OutResult);
+
+		FInterConstArmStructChange(Params, OutResult, CurrentArmValue, NeedChangeArmValue);
+		switch (BoomArmMode)
+		{
+		case E_BoomArmComptueMode::FollowPlayer:
+
+			CAFollowBoomArm(Params, OutResult);
+			break;
+		case E_BoomArmComptueMode::Surrounding:
+			CABoomArm(Params, OutResult);
+			break;
+		default:
+			break;
+		}
+		
 	}
 
 } // namespace UE::Cameras

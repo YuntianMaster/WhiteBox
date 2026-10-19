@@ -10,6 +10,7 @@
 #include "Enum/ECombatEnum.h"
 #include "Enemy/EnemyCharacter.h"
 #include "GameFramework/Character.h"
+#include "UI/CharacterWidgetComponent.h"
 #include "AbilitySystemComponent.h"
 #include "AttrubuteSet/CombatAttributeSet.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -75,9 +76,17 @@ void AEnemyAIController::OnPerceptionUpdatedHandle(AActor* Actor, FAIStimulus St
 		}
 
 	}
-
+	UE_LOG(LogTemp, Warning, TEXT(" AEnemyAIController::OnPerceptionUpdatedHandle running"));
 
 	EnemyTargetActor = Actor;
+	if (APawn* ControlledPawn = GetPawn())
+	{
+		if (UCharacterWidgetComponent* CWC = ControlledPawn->GetComponentByClass<UCharacterWidgetComponent>())
+		{
+			CWC->ShowStateBarUI();
+			UE_LOG(LogTemp, Warning, TEXT(" AEnemyAIController::OnPerceptionUpdatedHandle::ShowStateBarUI"));
+		}
+	}
 	//UBlackboardComponent* BlackBoardComp = GetBlackboardComponent();
 	//BlackBoardComp->SetValueAsObject("TargetActor", Actor);
 	
@@ -88,9 +97,21 @@ void AEnemyAIController::OnPerceptionUpdatedHandle(AActor* Actor, FAIStimulus St
 void AEnemyAIController::LostSeenStimulusHandler()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Partol"));
+	EnemyTargetActor = nullptr;
 	FStateTreeEvent TreePartolEvent;
 	TreePartolEvent.Tag = FGameplayTag::RequestGameplayTag("Event.StateTree.Patrol");
 	StateTreeAIComp->SendStateTreeEvent(TreePartolEvent);
+
+
+	if (APawn* ControlledPawn = GetPawn())
+	{
+		if (UCharacterWidgetComponent* CWC = ControlledPawn->GetComponentByClass<UCharacterWidgetComponent>())
+		{
+			CWC->HideStateBarUI();
+			UE_LOG(LogTemp, Warning, TEXT(" AEnemyAIController::OnPerceptionUpdatedHandle::HideStateBarUI"));
+		}
+	}
+
 }
 
 //void AEnemyAIController::InitialEnemyBlackBoard()

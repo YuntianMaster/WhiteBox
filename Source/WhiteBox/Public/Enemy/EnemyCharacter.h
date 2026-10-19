@@ -40,13 +40,15 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	class UCombatAttributeSet* CombatAttributeSet;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	class UWidgetComponent* CharacterUI;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	class UWeaponSystemComp* WeaponSystemComp;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	class UMotionWarpingComponent* MotionWarpingComp;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	class UPlayerTraceComponent* TraceComp;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UWidgetComponent* TakeDownIcon;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UCharacterWidgetComponent* EnemyMainUI;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TEnumAsByte<EPlayerStates> EnemyPlayerStats{ EPlayerStates::CharacterNoneStats };

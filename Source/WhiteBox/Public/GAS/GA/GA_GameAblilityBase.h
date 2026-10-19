@@ -25,6 +25,8 @@ class WHITEBOX_API UGA_GameAblilityBase : public UGameplayAbility
 public:
 	UGA_GameAblilityBase();
 	
+
+
 	UPROPERTY(Transient)
 	class USkillWidget* SkillUI;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
@@ -62,6 +64,9 @@ public:
 	TSubclassOf<UGameplayEffect>  GE_Self;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Self")
 	float GE_Self_Lv;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Self")
+	bool bIsRemoveGE_SelfAtEnd{ false };
+	FActiveGameplayEffectHandle SelfActiveGEHandle;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Attacker")
 	float GE_ToAttacker_Magnitude;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Attacker")
@@ -74,6 +79,12 @@ public:
 	TSubclassOf<UGameplayEffect>  GE_ToTarget;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Target")
 	float GE_ToTarget_Lv;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GC_Tag")
+	FGameplayTag ToTargetGameplayCueTag;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GC_Tag")
+	FGameplayTag ToSelfGameplayCueTag;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "StateTreeEvent_Tag")
+	FGameplayTagContainer StateTreeEventTagContainer;
 
 
 protected:
@@ -95,6 +106,9 @@ protected:
 	virtual void OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
 	virtual void OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
 	void TryCacheCharacterRefs(const FGameplayAbilityActorInfo* ActorInfo);
+	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
+
 	UFUNCTION(BlueprintCallable, Category = "EQS")
 	void RunCoverEQS();
 
@@ -119,6 +133,9 @@ protected:
 	//向目标执行GE
 	UFUNCTION(BlueprintCallable)
 	void ApplyGEToTarget(FGameplayEventData Playload, FGameplayTag DataTag);
+	UFUNCTION(BlueprintCallable)
+	void SendStateEventHandle(AActor* EventActor);
+
 
 
 

@@ -127,6 +127,31 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 
 	if (Data.EvaluatedData.Attribute == GetStaminaAttribute()) {
 		SetStamina(GetStamina());
+
+		const FGameplayAbilityActorInfo* ActorInfo = GetActorInfo();
+		AActor* AvatarActor = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr;
+
+		if (GetStamina() == 0)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("PostGameplayEffectExecute: Zero"));
+			UAbilitySystemComponent* ASC = AvatarActor->GetComponentByClass<UAbilitySystemComponent>();
+			FGameplayTag ZeroStaminaTag = FGameplayTag::RequestGameplayTag("Event.Combat.ZeroStamina");
+			FGameplayEventData Payload;
+			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+				AvatarActor,
+				ZeroStaminaTag,
+				Payload
+
+			);
+
+
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("PostGameplayEffectExecute: Stamina=%f Base=%f Current=%f"),
+			GetStamina(), Stamina.GetBaseValue(), Stamina.GetCurrentValue()
+
+		);
+
 	}
 
 	if(Data.EvaluatedData.Attribute == GetMaxHealthAttribute())

@@ -15,6 +15,7 @@
 #include "MotionWarpingComponent.h"
 #include "Combat/PlayerTraceComponent.h"
 #include "Enum/EPlayerStates.h"
+#include "UI/CharacterWidgetComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Animation/EnemyAnimInstance.h"
 #include "Combat/WeaponSystemComp.h"
@@ -36,10 +37,10 @@ AEnemyCharacter::AEnemyCharacter()
 	WeaponSystemComp = CreateDefaultSubobject<UWeaponSystemComp>(TEXT("WeaponSystemComp"));
 	MotionWarpingComp = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComp"));
 	TraceComp = CreateDefaultSubobject<UPlayerTraceComponent>(TEXT("TraceComp"));
-	CharacterUI = CreateDefaultSubobject<UWidgetComponent>(TEXT("WidgetComp")); 
-	CharacterUI->SetupAttachment(GetMesh());
-	
-	
+	TakeDownIcon = CreateDefaultSubobject<USceneActorWidget>(TEXT("TakeDownIcon"));
+	TakeDownIcon->SetupAttachment(GetMesh());
+	EnemyMainUI = CreateDefaultSubobject<UCharacterWidgetComponent>(TEXT("EnemyUIWidgetComp"));
+	EnemyMainUI->SetupAttachment(GetMesh());
 }
 
 UAbilitySystemComponent* AEnemyCharacter::GetAbilitySystemComponent() const

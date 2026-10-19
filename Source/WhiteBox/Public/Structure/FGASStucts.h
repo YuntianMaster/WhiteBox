@@ -17,6 +17,13 @@ struct WHITEBOX_API FTraceMontageID: public FGameplayAbilityTargetData
 
 	UPROPERTY(BlueprintReadWrite)
 	int32 TRACE_MONTAGE_ID = INDEX_NONE;
+	UPROPERTY(BlueprintReadWrite)
+	float DamageAmout = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GC_Tag")
+	FGameplayTag ToTargetGameplayCueTag;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GC_Tag")
+	FGameplayTag ToSelfGameplayCueTag;
+
 
 	virtual UScriptStruct* GetScriptStruct() const override
 	{
@@ -25,8 +32,32 @@ struct WHITEBOX_API FTraceMontageID: public FGameplayAbilityTargetData
 	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess)
 	{
 		Ar << TRACE_MONTAGE_ID;
+		Ar << DamageAmout;
 		bOutSuccess = true;
 		return true;
 	}
 
 };
+
+
+//USTRUCT(BlueprintType)
+//struct WHITEBOX_API FAbilityDamage : public FGameplayAbilityTargetData
+//{
+//	GENERATED_BODY()
+//
+//
+//	UPROPERTY(BlueprintReadWrite)
+//	float DamageAmout = 0;
+//
+//	virtual UScriptStruct* GetScriptStruct() const override
+//	{
+//		return FAbilityDamage::StaticStruct();
+//	}
+//	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess)
+//	{
+//		Ar << DamageAmout;
+//		bOutSuccess = true;
+//		return true;
+//	}
+//
+//};

@@ -32,3 +32,12 @@ enum E_BoomArmValue
 	BoomHeight UMETA(DisplayName = "BoomHeight"),
 	BoomLatera UMETA(DisplayName = "BoomLatera"),
 };
+
+UENUM(BlueprintType)
+enum E_BoomArmComptueMode
+{
+	Surrounding UMETA(DisplayName = "Surrounding"),
+	FollowPlayer UMETA(DisplayName = "FollowPlayer"),
+	Fixed UMETA(DisplayName = "Fixed"),
+	
+};

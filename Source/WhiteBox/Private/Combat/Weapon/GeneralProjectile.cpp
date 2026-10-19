@@ -279,7 +279,7 @@ void AGeneralProjectile::OnHitHandle(AActor* HitObject)
 
 	if (bSphereHit)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Projectile Hit Actor is :%s"), *Hits.GetActor()->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("Projectile Hit Actor is :%s"), *Hits.GetComponent()->GetName());
 		FGameplayTag TakeHitTag = FGameplayTag::RequestGameplayTag("Event.Combat.TakeHit");
 		
 

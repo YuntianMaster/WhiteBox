@@ -26,6 +26,8 @@ protected:
 	float NewValue;
 	UPROPERTY(BlueprintReadWrite,EditAnywhere)
 	TSubclassOf<UGameplayEffect> RegenEffect;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float DelayRecoveyTime{ 2.f };
 	FGameplayEffectSpecHandle RegenSpecHandle;
 	FActiveGameplayEffectHandle ActiveHandle;
 };

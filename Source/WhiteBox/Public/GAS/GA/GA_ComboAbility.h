@@ -18,15 +18,20 @@ class WHITEBOX_API UGA_ComboAbility : public UGA_GameAblilityBase
 protected:
 	int CombotCounter{ 0 };
 	bool bCanComboInput{ true };
+	UFUNCTION()
+	void OnPlayerComboMotionWarpUpdate(class UMotionWarpingComponent* MWC);
 
-	
+	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
+		const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
+
+	UFUNCTION()
+	void OnComboTraceHitHandle(FGameplayEventData Payload);
 
 public:
 	UGA_ComboAbility();
 	UFUNCTION()
 	void OnCancelHandle();
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WarpMotion")
-	float MotionWarpDistance{ 300.f };
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WarpMotion", meta = (ClampMin = "0.0", ClampMax = "1000.0"))
 	float TargetOffset{ 0.8f };
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -52,4 +57,18 @@ public:
 	FActiveGameplayEffectHandle AttackingHandle;
 protected:
 	UAnimMontage* CurrentMontage;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WarpMotion")
+	float MotionWarpDistance{ 300.f };
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WarpMotion")
+	float ComboWarpDistanceOffset;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WarpMotion")
+	FVector ComboWarpOffset;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WarpMotion")
+	FName ComboWarpName{"Attack"};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "WarpMotion")
+	bool bComboDebugMode;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage")
+	float DamageAmount{ 5.f };
+	
 };

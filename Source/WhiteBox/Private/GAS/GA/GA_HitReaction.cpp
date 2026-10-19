@@ -126,7 +126,6 @@ void UGA_HitReaction::GetHit(FVector HitLocation)
 
 	HitReactionMontage->OnCompleted.AddDynamic(this, &UGA_HitReaction::OnHitReactionMontageCompleted);
 	HitReactionMontage->OnCancelled.AddDynamic(this, &UGA_HitReaction::OnHitReactionMontageCompleted);
-	HitReactionMontage->OnBlendOut.AddDynamic(this, &UGA_HitReaction::OnHitReactionMontageCompleted);
 	HitReactionMontage->OnInterrupted.AddDynamic(this, &UGA_HitReaction::OnHitReactionMontageCompleted);
 	HitReactionMontage->ReadyForActivation();
 }
