@@ -62,6 +62,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
 	FGameplayAttributeData MaxPoise;
 	ATTRIBUTE_ACCESSORS(UBasicAttributeSet, MaxPoise);
+	UPROPERTY(BlueprintReadOnly, Category = "Attributes")
+	FGameplayAttributeData GrayHealth;
+	ATTRIBUTE_ACCESSORS(UBasicAttributeSet, GrayHealth);
 
 protected:
 

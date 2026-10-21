@@ -61,7 +61,7 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	UDataTable* EnemyBasicAttributeDataTable;
 	void OnEnemyPoiseMaxTagChange(const FGameplayTag Callbacktage, int32 NewCount);
-
+	void OnEnemyBlockingTagChange(const FGameplayTag Callbacktage, int32 NewCount);
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

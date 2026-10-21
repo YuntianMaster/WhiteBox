@@ -74,7 +74,11 @@ void APlayerCharacter::OnDeadTagChange(const FGameplayTag CallBackTag, int32 New
 void APlayerCharacter::OnBockingTagChange(const FGameplayTag Callbacktage, int32 NewCount)
 {
 	if (NewCount > 0)
-		PlayerStats = EPlayerStates::SwordDFence;
+	{
+		PlayerStats = EPlayerStates::Blocking;
+		PlayerAnim->SetAnimLayerWithPlayerStats(PlayerStats);
+
+	}
 	if (NewCount <= 0)
 		PlayerStats = EPlayerStates::CharacterNoneStats;
 }

@@ -92,6 +92,8 @@ void UPlayerAnimInstance::ProcessTurnYawCurve()
 
 
 
+
+
 void UPlayerAnimInstance::UpdateEPlayerVelocityDirection()
 {
 	/*if (UKismetMathLibrary::Abs(VelocityLocomotionAngle) < FrontAngle + DeadZoneAngle) {
@@ -230,13 +232,20 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaTimeX)
 void UPlayerAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeThreadSafeUpdateAnimation(DeltaSeconds);
+	APawn* Apawnref{ TryGetPawnOwner() };
+	if(Apawnref)
+	{
+		CachedOwnerVelocity = Apawnref->GetVelocity();
+		CachedOwnerRotation = Apawnref->GetActorRotation();
+	}
+
 	UpdateOrientationData();
 	UpdateEPlayerVelocityDirection();
 	UpdateAccelerationDirection();
 	UpdateCharacterGateState();
 	UpdateDeltaLocation();
-
 	
+
 	//UpdateRootYawOffset(DeltaSeconds);
 }
 
@@ -268,4 +277,22 @@ void UPlayerAnimInstance::UpdateFallingAnimState()
 	{
 		bShouldPlayFallingAnim = bIsFalling && (FloorDist > FallingEnterFloorDist);
 	}
+}
+
+
+void UPlayerAnimInstance::SetAnimLayerWithPlayerStats(EPlayerStates PlayerStates)
+{
+
+	APawn* Pawn = TryGetPawnOwner();
+	UWeaponSystemComp* WSC = Pawn->GetComponentByClass<UWeaponSystemComp>();
+	if (!WSC)
+	{
+
+		UE_LOG(LogTemp, Error, TEXT("UPlayerAnimInstance::SetAnimLayerWithPlayerStats: WSC is invaid"));
+
+	}
+
+	TSubclassOf<UAnimInstance> AnimLayer = WSC->GetCurrentPlayerStatesAnimInstance(PlayerStates);
+	GetSkelMeshComponent()->LinkAnimClassLayers(AnimLayer);
+
 }

@@ -81,6 +81,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	TArray<AWeaponGeneral*> GetWeaponByEWeapon(EWeapons WeaponName);
 
+	TSubclassOf<UAnimInstance> GetCurrentPlayerStatesAnimInstance(EPlayerStates PlayerStates);
 };
 
 

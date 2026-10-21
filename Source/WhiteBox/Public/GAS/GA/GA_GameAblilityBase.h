@@ -25,7 +25,8 @@ class WHITEBOX_API UGA_GameAblilityBase : public UGameplayAbility
 public:
 	UGA_GameAblilityBase();
 	
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Base")
+	bool bIsStopMovement{true};
 
 	UPROPERTY(Transient)
 	class USkillWidget* SkillUI;
@@ -103,6 +104,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EQS")
 	TEnumAsByte<EEnvQueryRunMode::Type> EQSMode;
 
+	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 	virtual void OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
 	virtual void OnAvatarSet(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec) override;
 	void TryCacheCharacterRefs(const FGameplayAbilityActorInfo* ActorInfo);

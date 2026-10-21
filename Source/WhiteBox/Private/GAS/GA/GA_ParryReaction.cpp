@@ -266,7 +266,7 @@ void UGA_ParryReaction::ParrySuccessHandle(FGameplayEventData Playload)
 
 
 	UE_LOG(LogTemp, Warning, TEXT("ParrySuccessHandle: Playload.Instigator: %s"), *Playload.Instigator.GetName());
-	ParrySucessHandle();
+	ParrySucessHandle(Playload);
 		
 }
 

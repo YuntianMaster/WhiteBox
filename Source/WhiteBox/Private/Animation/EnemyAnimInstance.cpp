@@ -10,38 +10,38 @@ void UEnemyAnimInstance::GetPlayerVelocityDirection()
 {
 
 	//FVector Direction = DestinationLocation - GetOwningActor()->GetActorLocation();
-	FRotator Rotation = UKismetMathLibrary::MakeRotFromX(CachedOwnerVelocity);
-	Rotation.Yaw = UKismetMathLibrary::NormalizeAxis(Rotation.Yaw);
+	float RotationYaw = CalculateDirection(CachedOwnerVelocity, CachedOwnerRotation);
+	RotationYaw = UKismetMathLibrary::NormalizeAxis(RotationYaw);
 
-	if(Rotation.Yaw > -22.5f && Rotation.Yaw <= 22.5f)
+	if(RotationYaw > -22.5f && RotationYaw <= 22.5f)
 	{
 		ActorDirection = EPlayerVelocityDirection::VelocityForward;
 	}
-	else if(Rotation.Yaw > 22.5f && Rotation.Yaw <= 67.5f)
+	else if(RotationYaw > 22.5f && RotationYaw <= 67.5f)
 	{
 		ActorDirection = EPlayerVelocityDirection::VelocityFR;
 	}
-	else if(Rotation.Yaw > 67.5f && Rotation.Yaw <= 112.5f)
+	else if(RotationYaw > 67.5f && RotationYaw <= 112.5f)
 	{
 		ActorDirection = EPlayerVelocityDirection::VelocityRight;
 	}
-	else if(Rotation.Yaw > 112.5f && Rotation.Yaw <= 157.5f)
+	else if(RotationYaw > 112.5f && RotationYaw <= 157.5f)
 	{
 		ActorDirection = EPlayerVelocityDirection::VelocityBR;
 	}
-	else if(Rotation.Yaw > 157.5f || Rotation.Yaw <= -157.5f)
+	else if(RotationYaw > 157.5f || RotationYaw <= -157.5f)
 	{
 		ActorDirection = EPlayerVelocityDirection::VelocityBackward;
 	}
-	else if(Rotation.Yaw > -157.5f && Rotation.Yaw <= -112.5f)
+	else if(RotationYaw > -157.5f && RotationYaw <= -112.5f)
 	{
 		ActorDirection = EPlayerVelocityDirection::VelocityBL;
 	}
-	else if(Rotation.Yaw > -112.5f && Rotation.Yaw <= -67.5f)
+	else if(RotationYaw > -112.5f && RotationYaw <= -67.5f)
 	{
 		ActorDirection = EPlayerVelocityDirection::VelocityLeft;
 	}
-	else if(Rotation.Yaw > -67.5f && Rotation.Yaw <= -22.5f)
+	else if(RotationYaw > -67.5f && RotationYaw <= -22.5f)
 	{
 		ActorDirection = EPlayerVelocityDirection::VelocityFL;
 	}

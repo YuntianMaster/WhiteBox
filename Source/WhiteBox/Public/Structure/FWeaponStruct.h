@@ -6,6 +6,7 @@
 #include "Structure/FTraceSockets.h"
 #include "AbilitySystemComponent.h"
 #include "Combat/Weapon/GeneralProjectile.h"
+#include "Enum/EPlayerStates.h"
 #include "FWeaponStruct.generated.h"
 
 
@@ -48,4 +49,6 @@ struct WHITEBOX_API FWeaponStruct
 	bool bAutoVisable{ true };
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapon")
 	TSubclassOf<AGeneralProjectile> WeaponProjectile;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapon")
+	TMap<TEnumAsByte<EPlayerStates>, TSubclassOf<UAnimInstance> > AnimLayers;
 };

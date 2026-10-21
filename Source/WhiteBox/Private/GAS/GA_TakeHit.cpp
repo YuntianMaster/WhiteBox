@@ -18,6 +18,7 @@ void UGA_TakeHit::OnTakeHitHandle(const FGameplayEventData& EventData)
 	FGameplayTag DodgeTag = FGameplayTag::RequestGameplayTag("Stats.Dodge");
 	FGameplayTag SuperAttackBuffTag = FGameplayTag::RequestGameplayTag("Buff.SuperAttack");
 	FGameplayTag SuperParryTag = FGameplayTag::RequestGameplayTag("Stats.SuperParry");
+
 	
 	UE_LOG(LogTemp, Warning, TEXT("UGA_TakeHit::OnTakeHitHandle : TargetASC Instigator: %s"), *EventData.Instigator.GetName());
 
@@ -26,7 +27,7 @@ void UGA_TakeHit::OnTakeHitHandle(const FGameplayEventData& EventData)
 		TargetASC = EventData.Instigator->GetComponentByClass<UAbilitySystemComponent>();
 
 	
-
+	//Parry
 
 	if (TargetASC->HasMatchingGameplayTag(SuperAttackBuffTag)&& TargetASC)
 	{
@@ -90,7 +91,7 @@ void UGA_TakeHit::OnTakeHitHandle(const FGameplayEventData& EventData)
 		EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
 		return;
 	}
-
+	// Dodge
 	if (OnwerASC->HasMatchingGameplayTag(PerfectDodgeTag))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("OnTakeHitHandle : PerfectDodgeTag"));
@@ -127,6 +128,9 @@ void UGA_TakeHit::OnTakeHitHandle(const FGameplayEventData& EventData)
 		EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
 		return;
 	}
+	
+	
+
 	
 	UE_LOG(LogTemp, Warning, TEXT("OnTakeHitHandle : HitReaction"));
 	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(

@@ -82,7 +82,7 @@ void UCamerManagerComponent::CameraModeChangeHandle(UPARAM(meta = (Categories = 
 void UCamerManagerComponent::CameraBoomArmValueChangeHandle(FCameraArmStruct ArmStruct)
 {
 	FOnCameraBoomArmValueChangeDelegate.Broadcast(ArmStruct);
-	UE_LOG(LogTemp, Error, TEXT("UCamerManagerComponent::CameraBoomArmValueChangeHandle: %f"), ArmStruct.MinBoomHeight);
+	//UE_LOG(LogTemp, Error, TEXT("UCamerManagerComponent::CameraBoomArmValueChangeHandle: %f"), ArmStruct.MinBoomHeight);
 }
 
 void UCamerManagerComponent::CameraPlayerFaceToTargetChangeHandle(bool bFaceTo)

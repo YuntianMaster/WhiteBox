@@ -2,13 +2,28 @@
 
 
 #include "GAS/GA/GA_HitReaction.h"
+#include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 
 void UGA_HitReaction::GetHit(FVector HitLocation)
 {
 	AActor* Avatar = GetAvatarActorFromActorInfo();
+	UAbilitySystemComponent* OwnerASC = GetAbilitySystemComponentFromActorInfo();
+	FGameplayTag SuperArmorTag = FGameplayTag::RequestGameplayTag("Stats.SuperArmor");
+	
+	if (OwnerASC->HasMatchingGameplayTag(SuperArmorTag))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("OnTakeHitHandle : SuperArmor"));
+		EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
+		return;
+
+	}
+
+
+
 	FVector HitDirection = (HitLocation - Avatar->GetActorLocation()).GetSafeNormal2D();
 	FVector ActorForward = Avatar->GetActorForwardVector().GetSafeNormal2D();
+
 	const float ActorYaw = ActorForward.Rotation().Yaw;
 	const float HitYaw = HitDirection.Rotation().Yaw;
 	const float DeltaSigned = FMath::FindDeltaAngleDegrees(ActorYaw, HitYaw); // -180 ~ 180

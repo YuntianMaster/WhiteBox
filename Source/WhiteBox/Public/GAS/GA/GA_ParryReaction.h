@@ -61,8 +61,8 @@ protected:
 public:
 	UFUNCTION(BlueprintCallable)
 	void ParryHandle(FGameplayEventData Playload);
-	UFUNCTION(BlueprintImplementableEvent)
-	void ParrySucessHandle();
+	UFUNCTION(BlueprintImplementableEvent, Category = "Parry")
+	void ParrySucessHandle(const FGameplayEventData& Playload);
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 		const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 };

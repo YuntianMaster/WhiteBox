@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "Enum/EPlayerStates.h"
 #include "PDA_Weapon.generated.h"
 
 
@@ -25,5 +26,8 @@ public:
 	UAnimMontage* EquipAnim;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "CharaterAnimation")
 	UAnimMontage* UnarmAnim;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Weapon|Anim")
+	TMap<TEnumAsByte<EPlayerStates>, TSubclassOf<UAnimInstance>> AnimLayers;
 
 };

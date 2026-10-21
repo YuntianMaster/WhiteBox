@@ -10,6 +10,7 @@
 #include "Player/PlayerCharacter.h"
 #include "Enemy/EnemyCharacter.h"
 #include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystemComponent.h"
 #include "Components/StateTreeAIComponent.h"
 #include "Net/UnrealNetwork.h"
 
@@ -25,6 +26,7 @@ UBasicAttributeSet::UBasicAttributeSet()
 	MaxShield = 100.f;
 	Poise = 100.f;
 	MaxPoise = 100.f;
+	GrayHealth = MaxHealth;
 }
 
 void UBasicAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -89,7 +91,15 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 
 		float totalDamage = GetDamage();
 		SetDamage(0.f);
+		
 
+
+		
+
+
+
+
+		//护盾结算
 		if (GetShield() > 0)
 		{
 			float RemainingDamage = totalDamage - GetShield();
@@ -103,6 +113,11 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 		{
 			SetHealth(GetHealth() - totalDamage);
 		}
+
+
+		//灰血结算
+
+		SetGrayHealth(GetHealth());
 
 		if (GetMaxHealth() > 0.f && GetHealth() / GetMaxHealth() < 0.5f)
 		{

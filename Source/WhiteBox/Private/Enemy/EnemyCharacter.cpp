@@ -122,6 +122,7 @@ void AEnemyCharacter::BeginPlay()
 		};
 
 	RegisterTagEvent(TEXT("Stats.PoiseMax"), &AEnemyCharacter::OnEnemyPoiseMaxTagChange);
+	RegisterTagEvent(TEXT("Stats.Blocking"), &AEnemyCharacter::OnEnemyBlockingTagChange);
 	
 }
 
@@ -131,6 +132,23 @@ void AEnemyCharacter::OnEnemyPoiseMaxTagChange(const FGameplayTag Callbacktage, 
 	if (NewCount > 0)
 	{
 		EnemyPlayerStats = EPlayerStates::PoiseMax;
+	}
+	if (NewCount <= 0)
+	{
+		EnemyPlayerStats = EPlayerStates::CharacterNoneStats;
+
+	}
+}
+
+void AEnemyCharacter::OnEnemyBlockingTagChange(const FGameplayTag Callbacktage, int32 NewCount)
+{
+	if (NewCount > 0)
+	{
+		//UE_LOG(LogTemp, Warning, TEXT("AEnemyCharacter::OnEnemyBlockingTagChange : Blocking"));
+		EnemyPlayerStats = EPlayerStates::Blocking;
+		UEnemyAnimInstance* EnemyAnimInst = Cast<UEnemyAnimInstance>(GetMesh()->GetAnimInstance());
+		EnemyAnimInst->SetAnimLayerWithPlayerStats(EnemyPlayerStats);
+
 	}
 	if (NewCount <= 0)
 	{

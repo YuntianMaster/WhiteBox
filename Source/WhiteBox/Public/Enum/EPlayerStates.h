@@ -17,7 +17,8 @@ enum EPlayerStates
 	Rolling UMETA(DisplayName = "Rolling"),
 	Parrying UMETA(DisplayName = "Parrying"),
 	PoiseMax UMETA(DisplayName = "PoiseMax"),
-	KnockedDown UMETA(DisplayName = "KnockedDown")
+	KnockedDown UMETA(DisplayName = "KnockedDown"),
+	Blocking UMETA(DisplayName = "Blocking")
 
 };
 

@@ -129,7 +129,7 @@ void UGA_WarpMontageAttack::WarpMontageHandler()
 void UGA_WarpMontageAttack::NoWarpMontageHandle()
 {
 
-	UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::NoWarpMontageHandle starting!"));
+	//UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::NoWarpMontageHandle starting!"));
 	AActor* Avatar = GetAvatarActorFromActorInfo();
 	if (!Avatar || !AttackMontage)
 	{
@@ -139,7 +139,7 @@ void UGA_WarpMontageAttack::NoWarpMontageHandle()
 	if (!GroundCheckHandle())
 	{
 
-		UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::NoWarpMontageHandle GroundCheckHandle fail!"));
+		//UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::NoWarpMontageHandle GroundCheckHandle fail!"));
 		EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
 		return;
 
@@ -165,7 +165,7 @@ void UGA_WarpMontageAttack::NoWarpMontageHandle()
 	}
 
 	MontageAttackTask->ReadyForActivation();
-	UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::NoWarpMontageHandle running!"));
+	//UE_LOG(LogTemp, Warning, TEXT("UGA_WarpMontageAttack::NoWarpMontageHandle running!"));
 
 	
 
@@ -202,7 +202,7 @@ void UGA_WarpMontageAttack::NoWarpMontageHandle()
 void UGA_WarpMontageAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
 	const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+	
 
 	GetWorld()->GetTimerManager().ClearTimer(WaitTimeHandle);
 	GetWorld()->GetTimerManager().ClearTimer(DelayEndAbilityHandle);
@@ -237,14 +237,21 @@ void UGA_WarpMontageAttack::EndAbility(const FGameplayAbilitySpecHandle Handle, 
 	{
 		if(GA_TargetActor)
 		{
-			UE_LOG(LogTemp, Error, TEXT("  UGA_WarpMontageAttack::EndAbility: GA_TargetActor: %s"), *GA_TargetActor->GetName());
+			//UE_LOG(LogTemp, Error, TEXT("  UGA_WarpMontageAttack::EndAbility: GA_TargetActor: %s"), *GA_TargetActor->GetName());
+			if (!Cast<APlayerCharacter>(GA_TargetActor)) {
+
+				UE_LOG(LogTemp, Error, TEXT("  UGA_WarpMontageAttack::EndAbility GA_TargetActor Error: : %s"), *GA_TargetActor->GetName());
+				Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+				return;
+
+			}
 			Cast<APlayerCharacter>(GA_TargetActor)->CameraManager->CameraPlayerFaceToTargetChangeHandle(true);
 			Cast<APlayerCharacter>(GA_TargetActor)->CameraManager->CameraBoomArmValueChangeHandle(defaultArmStruct);
 		}
 	
 	}
-
-	UE_LOG(LogTemp, Error, TEXT("UGA_WarpMontageAttack::EndAbility"));
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+	//UE_LOG(LogTemp, Error, TEXT("UGA_WarpMontageAttack::EndAbility"));
 }
 
 void UGA_WarpMontageAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -307,8 +314,9 @@ void UGA_WarpMontageAttack::OnTraceHitHandle(FGameplayEventData Payload)
 
 	OnTraceSuccessBroadCast(Payload);
 	
+	AActor* GAOnwer = GetAvatarActorFromActorInfo();
 
-
+	
 
 	if (bIsSpecialHitReaction)
 
@@ -319,13 +327,28 @@ void UGA_WarpMontageAttack::OnTraceHitHandle(FGameplayEventData Payload)
 	}
 
 	const FGameplayAbilityTargetData* TargetData = Payload.TargetData.Get(0);
+	const FGameplayAbilityTargetData* HitData = Payload.TargetData.Get(1);
 
+	if (!HitData || HitData->GetScriptStruct() != FGameplayAbilityTargetData_SingleTargetHit::StaticStruct())
+	{
+		UE_LOG(LogTemp, Error, TEXT("UGA_WarpMontageAttack::OnTraceHitHandle: NO Hit Result"));
+		return;
+	}
 
 	FTraceMontageID* Data =
 		static_cast<FTraceMontageID*>(const_cast<FGameplayAbilityTargetData*>(TargetData));
+	FGameplayAbilityTargetData_SingleTargetHit* HitResultData = 
+		static_cast<FGameplayAbilityTargetData_SingleTargetHit*>(const_cast<FGameplayAbilityTargetData*>(HitData));
 	Payload.EventMagnitude = DamageMagnitude;
 	Data->DamageAmout = DamageAmount;
 	Data->ToTargetGameplayCueTag = ToTargetGameplayCueTag;
+
+	FGameplayEffectContextHandle HitContextHandle = MakeEffectContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
+	HitContextHandle.AddInstigator(GAOnwer, GAOnwer);
+	HitContextHandle.AddHitResult(HitResultData->HitResult);
+	Payload.ContextHandle = HitContextHandle;
+
+
 
 	FGameplayTag HitTag = 
 		bIsCriticalHit ? FGameplayTag::RequestGameplayTag("Event.Combat.TakeCriticalHit") : FGameplayTag::RequestGameplayTag("Event.Combat.TakeHit");

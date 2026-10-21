@@ -42,6 +42,7 @@ protected:
 	UFUNCTION(BlueprintCallable, meta = (BlueprintThreadSafe))
 	void ProcessTurnYawCurve();
 
+
 public:
 	UPROPERTY(BlueprintReadWrite)
 	float CurrentVelocity{ 0.0f };
@@ -125,7 +126,7 @@ public:
 	float FrameTurnYawCurveValue{ 0.f };
 	FString TurnYawCurveName{ "root_rotation_Z" };
 	FString IsTurningCurveName{ "IsTurning" };
-
+	//Update 
 
 	//Bone Warping property
 	UPROPERTY(BlueprintReadWrite)
@@ -150,5 +151,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float LockYawOffset;
 
+	//Set Lyra AnimLayers
+	UFUNCTION(BlueprintCallable)
+	void SetAnimLayerWithPlayerStats(EPlayerStates PlayerStates);
 };
 	

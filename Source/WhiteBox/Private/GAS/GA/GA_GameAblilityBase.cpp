@@ -30,6 +30,16 @@ UGA_GameAblilityBase::UGA_GameAblilityBase()
 
 
 
+void UGA_GameAblilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+{
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	if (bIsStopMovement) {
+		if (bIsEnemyAbility)
+			EnemyAIRef->StopMovement();
+
+	}
+}
+
 void UGA_GameAblilityBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
 {
 	Super::OnGiveAbility(ActorInfo, Spec);

@@ -459,3 +459,22 @@ TArray<AWeaponGeneral*> UWeaponSystemComp::GetWeaponByEWeapon(EWeapons WeaponNam
 	UE_LOG(LogTemp, Warning, TEXT("WeaponName: %s"), *AllGaintedWeaponStructs[WeaponName][0]->GetName());
 	return AllGaintedWeaponStructs[WeaponName];
 }
+
+TSubclassOf<UAnimInstance> UWeaponSystemComp::GetCurrentPlayerStatesAnimInstance(EPlayerStates PlayerStates)
+{
+	TArray<AWeaponGeneral* > C_Weapons = GetWeaponByEWeapon(ECurrentWeapons);
+
+	for (AWeaponGeneral* W : C_Weapons)
+	{
+		
+		TSubclassOf<UAnimInstance> animIns = W->WeaponStructData.AnimLayers.FindRef(PlayerStates);
+		if (animIns)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("WeaponName: %s"), *animIns.GetDefaultObject()->GetName());
+			return animIns;
+		}
+
+	}
+	UE_LOG(LogTemp, Error, TEXT("WeaponName: %s has no AnimLayers"), *StaticEnum<EWeapons>()->GetNameStringByValue((int64)ECurrentWeapons));
+	return NULL;
+}
