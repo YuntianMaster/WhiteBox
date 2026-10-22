@@ -162,15 +162,28 @@ void UGA_GameAblilityBase::TryCacheCharacterRefs(const FGameplayAbilityActorInfo
 
 void UGA_GameAblilityBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+	
 	UAbilitySystemComponent* OwnerASC = GetAvatarActorFromActorInfo()->GetComponentByClass<UAbilitySystemComponent>();
 
-	if (bIsRemoveGE_SelfAtEnd && SelfActiveGEHandle.IsValid())
+
+
+	for (FGA_GE_Data& GE : AllGE_Self)
 	{
-		OwnerASC->RemoveActiveGameplayEffect(SelfActiveGEHandle, -1);
-		SelfActiveGEHandle.Invalidate();
+		if (!GE.GEActiveGEHandle.IsValid())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("FGA_GE_Data: GEActiveGEHandle is not Valid"));
+			continue;
+		}
+
+		if (GE.bIsRemoveGE_AtEnd)
+		{
+			OwnerASC->RemoveActiveGameplayEffect(GE.GEActiveGEHandle, -1);
+			UE_LOG(LogTemp, Warning, TEXT("FGA_GE_Data: GE Removed"));
+			GE.GEActiveGEHandle.Invalidate();
+		}
 	}
-		
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 
 
 }
@@ -227,16 +240,22 @@ void UGA_GameAblilityBase::OnEQSFinished(TSharedPtr<FEnvQueryResult> Result)
 void UGA_GameAblilityBase::ApplyGEToSelf(FGameplayTag DataTag)
 {
 	UAbilitySystemComponent* OwnerASC = GetAvatarActorFromActorInfo()->GetComponentByClass<UAbilitySystemComponent>();	
-	FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
-	Context.AddSourceObject(GetAvatarActorFromActorInfo());
-	Context.AddInstigator(GetAvatarActorFromActorInfo(), GetAvatarActorFromActorInfo());
-	FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(GE_Self, GE_Self_Lv, Context);
-	if (!SpecHandle.IsValid()) {
-		UE_LOG(LogTemp, Warning, TEXT("SpecHandle is not working"));
-		return;
+
+	for (FGA_GE_Data& GE : AllGE_Self)
+	{
+		FGameplayEffectContextHandle Context = OwnerASC->MakeEffectContext();
+		Context.AddSourceObject(GetAvatarActorFromActorInfo());
+		Context.AddInstigator(GetAvatarActorFromActorInfo(), GetAvatarActorFromActorInfo());
+		FGameplayEffectSpecHandle SpecHandle = OwnerASC->MakeOutgoingSpec(GE.GE_Class, GE.GE_Lv, Context);
+		if (!SpecHandle.IsValid()) {
+			UE_LOG(LogTemp, Warning, TEXT("SpecHandle is not working"));
+			continue;
+		}
+		SpecHandle.Data->SetByCallerTagMagnitudes.Add(DataTag, GE.Ge_Magnitue);
+		GE.GEActiveGEHandle = OwnerASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), OwnerASC);
 	}
-	SpecHandle.Data->SetByCallerTagMagnitudes.Add(DataTag, GE_Self_Magnitude);
-	SelfActiveGEHandle = OwnerASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), OwnerASC);
+
+	
 
 }
 

@@ -90,6 +90,11 @@ void UTalentComp::BeginPlay()
 {
 	Super::BeginPlay();
 	ASC = GetOwner()->FindComponentByClass<UAbilitySystemComponent>();
+
+	for (UPDA_Talent* InitalTalent : InitialTalents) {
+
+		GrantTalent(InitalTalent);
+	}
 	// ...
 	
 }

@@ -134,12 +134,6 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 	} 
 
 
-	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
-	{
-		SetHealth(GetHealth());
-
-	}
-
 	if (Data.EvaluatedData.Attribute == GetStaminaAttribute()) {
 		SetStamina(GetStamina());
 

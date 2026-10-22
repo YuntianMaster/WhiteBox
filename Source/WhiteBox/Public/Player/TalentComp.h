@@ -19,6 +19,8 @@ public:
 	UTalentComp();
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray <class UPDA_Talent*> GrantedTalents;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray <class UPDA_Talent*> InitialTalents;
 	class UAbilitySystemComponent* ASC;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<class UTalentTree> WBP_TalentTree;

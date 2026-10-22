@@ -15,6 +15,24 @@ DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(
 
 
 
+
+USTRUCT(BlueprintType)
+struct WHITEBOX_API FGA_GE_Data
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Ge_Magnitue = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<UGameplayEffect>  GE_Class;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float GE_Lv;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsRemoveGE_AtEnd{ false };
+
+	FActiveGameplayEffectHandle GEActiveGEHandle;
+};
+
+
 /**
  * 
  */
@@ -59,15 +77,12 @@ public:
 		FGameplayTagContainer* OptionalRelevantTags) const override;
 
 
+
+
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Self")
-	float GE_Self_Magnitude;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Self")
-	TSubclassOf<UGameplayEffect>  GE_Self;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Self")
-	float GE_Self_Lv;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Self")
-	bool bIsRemoveGE_SelfAtEnd{ false };
-	FActiveGameplayEffectHandle SelfActiveGEHandle;
+	TArray<FGA_GE_Data> AllGE_Self;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Attacker")
 	float GE_ToAttacker_Magnitude;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Attacker")
