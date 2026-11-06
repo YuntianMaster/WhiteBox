@@ -12,35 +12,6 @@
 #include "AbilitySystemComponent.h"
 
 
-
-void UGA_CanDeflectAttack::OnTraceHitHandle(FGameplayEventData Payload)
-{
-	UE_LOG(LogTemp, Warning, TEXT("UGA_CanDeflectAttack::OnTraceHitHandle BEGIN Avatar=%s Target=%s Instigator=%s"),
-		*GetNameSafe(GetAvatarActorFromActorInfo()),
-		*GetNameSafe(Payload.Target.Get()),
-		*GetNameSafe(Payload.Instigator.Get()));
-
-	Super::OnTraceHitHandle(Payload);
-
-	UE_LOG(LogTemp, Warning, TEXT("UGA_CanDeflectAttack::OnTraceHitHandle AFTER Super (TakeHit/SuperParry Send should have finished)"));
-
-	AActor* TargetActor = const_cast<AActor*>(Payload.Target.Get());
-	UAbilitySystemComponent* TargetASC =
-		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
-
-	
-
-	if (TargetASC && TargetASC->HasMatchingGameplayTag(DeflectTag))
-	{
-		UE_LOG(LogTemp, Warning, TEXT(" UGA_CanDeflectAttack::OnTraceHitHandle Target: HasTag(DefleatTage)"));
-		//DeflectHandler(Payload);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT(" UGA_CanDeflectAttack::OnTraceHitHandle Target: No HasTag(DefleatTage)"));
-	}
-}
-
 void UGA_CanDeflectAttack::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
@@ -88,7 +59,7 @@ void UGA_CanDeflectAttack::DeflectHandler(FGameplayEventData Payload)
 		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
 	UAbilityTask_PlayMontageAndWait* FailAttackMontage = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 		this,
-		"MontageAttack",
+		"DeflectMontageAttack",
 		FailAttackAnimMontage,
 		FailAttackAnimMontagePlayRate,
 		NAME_None,

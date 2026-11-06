@@ -43,6 +43,10 @@ protected:
 	void ProcessTurnYawCurve();
 
 
+	UFUNCTION(BlueprintCallable, meta = (BlueprintThreadSafe))
+	void UpdateTargetLocation();
+
+
 public:
 	UPROPERTY(BlueprintReadWrite)
 	float CurrentVelocity{ 0.0f };
@@ -83,6 +87,8 @@ public:
 	TEnumAsByte<E_Gate> IncomingGate;
 	UPROPERTY(BlueprintReadWrite)
 	float VelocityLocomotionAngle{0.5f};
+	UPROPERTY(BlueprintReadOnly)
+	FVector TargetLocation;
 
 	UPROPERTY(BlueprintReadWrite)
 	TEnumAsByte<EPlayerVelocityDirection> CurrentVelocityDirection { EPlayerVelocityDirection::VelocityNone };

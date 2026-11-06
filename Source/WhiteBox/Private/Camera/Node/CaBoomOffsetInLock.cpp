@@ -982,10 +982,18 @@ namespace UE::Cameras
 
 
 		const FVector PlayerLocation = PlayerCharacter->GetActorLocation();
-		const FTransform PlayerTrans = PlayerCharacter->GetTransform();
 		const FVector TargetLocation = TargetActor->GetActorLocation();
 		const FVector FocusLocation = FocusLocationReader.Get(OutResult.VariableTable);
 		
+
+		FRotator PlayerR = UKismetMathLibrary::FindLookAtRotation(PlayerLocation, TargetActor->GetActorLocation());
+		PlayerR.Pitch = 0;
+		PlayerR.Roll = 0;
+		if (bIsFaceToTarget)
+			OwnerActor->SetActorRotation(PlayerR);
+
+		const FTransform PlayerTrans = PlayerCharacter->GetTransform();
+	
 
 		//UE_LOG(LogTemp, Warning, TEXT("FCaBoomOffsetInLockEvaluator::CAFollowBoomArm:TargetLocation:%s"),*FocusLocation.ToString());
 		PlayerCharacter->bUseControllerRotationYaw = false;
@@ -1122,16 +1130,20 @@ namespace UE::Cameras
 		UE_LOG(LogTemp, Warning, TEXT(" CurrentArmValue.MinBoomLength: %f"), CurrentArmValue.MinBoomLength);
 		UE_LOG(LogTemp, Warning, TEXT(" CurrentArmValue.MinBoomLength: %f"), CurrentArmValue.MaxBoomLength);*/
 
-		FRotator PlayerR = UKismetMathLibrary::FindLookAtRotation(PlayerLocation, TargetActor->GetActorLocation());
+		/*FRotator PlayerR = UKismetMathLibrary::FindLookAtRotation(PlayerLocation, TargetActor->GetActorLocation());
+		PlayerR.Pitch = 0;
+		PlayerR.Roll = 0;
+		if (bIsFaceToTarget)
+			OwnerActor->SetActorRotation(PlayerR);
+		*/
 		FVector CamP = PlayerTrans.TransformPosition(FVector(-Hi, CurrentArmValue.MinBoomLatera, CurrentArmValue.MinBoomHeight));
 		FRotator CamR = UKismetMathLibrary::FindLookAtRotation(CamP, FocusLocation);
 
 		OutResult.CameraPose.SetLocation(CamP);
 		OutResult.CameraPose.SetRotation(CamR);
-		PlayerR.Pitch = 0;
-		PlayerR.Roll = 0;
-		if(bIsFaceToTarget)
-			OwnerActor->SetActorRotation(PlayerR);
+		
+		
+		
 		CaculateFocusLocation(CurrentCameraLockMode, Params, OutResult);
 	}
 
@@ -1365,6 +1377,7 @@ namespace UE::Cameras
 	{
 
 		FInterConstArmStructChange(Params, OutResult, CurrentArmValue, NeedChangeArmValue);
+
 		switch (BoomArmMode)
 		{
 		case E_BoomArmComptueMode::FollowPlayer:

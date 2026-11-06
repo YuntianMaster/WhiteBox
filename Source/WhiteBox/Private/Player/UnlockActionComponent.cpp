@@ -74,5 +74,6 @@ void UUnlockActionComponent::ApplyLock()
 void UUnlockActionComponent::ApplyUnlock()
 {
 	InputSystem->AddMappingContext(DefaultContentMapping,0);
+	InputSystem->AddMappingContext(BattleContentMapping, 0);
 }
 

@@ -80,12 +80,17 @@ void UGA_TakeHit::OnTakeHitHandle(const FGameplayEventData& EventData)
 
 	if (OnwerASC->HasMatchingGameplayTag(ParryTag))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("OnTakeHitHandle : Parrying"));
+		const FGameplayAbilityTargetData* TargetData = EventData.TargetData.Get(0);
+
+		FTraceMontageID* Data =
+			static_cast<FTraceMontageID*>(const_cast<FGameplayAbilityTargetData*>(TargetData));
+
+		
+		UE_LOG(LogTemp, Warning, TEXT("OnTakeHitHandle : Parrying: bIsCritialHit: %i"), Data->bIsCritialHit);
 		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
 			Onwer,
-			FGameplayTag::RequestGameplayTag("Event.Combat.ParrySuccess"),
+			Data->bIsCritialHit ? FGameplayTag::RequestGameplayTag("Event.Combat.CriticalParrySuccess"):FGameplayTag::RequestGameplayTag("Event.Combat.ParrySuccess"),
 			EventData
-
 		);
 
 		EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);

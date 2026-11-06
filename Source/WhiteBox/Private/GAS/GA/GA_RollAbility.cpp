@@ -34,12 +34,12 @@ void UGA_RollAbility::GA_Roll()
 
 	const float DeltaSigned = FMath::FindDeltaAngleDegrees(ActorYaw, InputYaw); // -180~180
 	const float Angle360 = FRotator::ClampAxis(DeltaSigned);                     // 0~360
-	/*UE_LOG(LogTemp, Warning, TEXT("last input yaw,%f"), Angle360);*/
+	UE_LOG(LogTemp, Warning, TEXT("last input yaw,%f"), Angle360);
 
 	
 	
 	
-	//UE_LOG(LogTemp, Warning, TEXT("yaw::%f"), RotatYaw);
+	/*UE_LOG(LogTemp, Warning, TEXT("yaw::%f"), RotatYaw);*/
 	int CounterMax = Roll_F.Num();
 	RollIndex = UKismetMathLibrary::Wrap(RollIndex, -1, CounterMax - 1);
 	/*UE_LOG(LogTemp, Warning, TEXT("last input,%s"), *RollDirection.ToString());
@@ -48,7 +48,7 @@ void UGA_RollAbility::GA_Roll()
 	UAbilityTask_PlayMontageAndWait* RollMontage = nullptr;
 
 	//  不同角度播放不同翻滚动画
-	if (Angle360 < 30)
+	if (Angle360 < 30 || Angle360>= 330)
 	{
 		if (EROLLDir != ERollDirection::F)
 		{

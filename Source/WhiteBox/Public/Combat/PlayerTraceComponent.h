@@ -22,8 +22,8 @@ public:
 	class UWeaponSystemComp* WeaponSystemComp;
 	class UGA_WarpMontageAttack* GA_WarpMontageAttack;
 	int32 Trace_MontageInstanceID;
-
-
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bDebugMode{ false };
 
 protected:
 	// Called when the game starts
@@ -31,8 +31,8 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float BoxCollisionLenght;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	bool bDebugMode{ false };
+
+
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Trace|Optimize")
 	bool bEnableSweptTrace{ true };

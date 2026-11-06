@@ -11,6 +11,7 @@
 #include "EnvironmentQuery/EnvQuery.h"
 #include "EnvironmentQuery/EnvQueryManager.h"
 #include "AbilitySystemGlobals.h"
+#include "AttrubuteSet/BasicAttributeSet.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Abilities/GameplayAbilityTargetTypes.h"
@@ -23,6 +24,16 @@ UGA_GameAblilityBase::UGA_GameAblilityBase()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	CharRef = nullptr;
 	AnimInstance = nullptr;
+
+	static ConstructorHelpers::FObjectFinder<UDataTable> Finder(
+		TEXT("/Game/WhiteBox/DataTable/GA_DataTable.GA_DataTable"));
+	if (Finder.Succeeded()) {
+		GA_DataTable = Finder.Object;
+	}
+	
+
+
+
 
 	ActivationBlockedTags.AddTag(FGameplayTag::RequestGameplayTag(FName("Stats.KnockedDown")));
 
@@ -38,6 +49,13 @@ void UGA_GameAblilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 			EnemyAIRef->StopMovement();
 
 	}
+
+
+	TArray<FAbilityCatalogRow*> Rows;
+	GA_DataTable->GetAllRows(TEXT("GA_Data"), Rows);
+	InitialAbilityData(Rows);
+
+
 }
 
 void UGA_GameAblilityBase::OnGiveAbility(const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilitySpec& Spec)
@@ -237,7 +255,7 @@ void UGA_GameAblilityBase::OnEQSFinished(TSharedPtr<FEnvQueryResult> Result)
 	OnCoverEQSFinished(EQSQueryLocation);
 }
 
-void UGA_GameAblilityBase::ApplyGEToSelf(FGameplayTag DataTag)
+void UGA_GameAblilityBase::ApplyGEToSelf()
 {
 	UAbilitySystemComponent* OwnerASC = GetAvatarActorFromActorInfo()->GetComponentByClass<UAbilitySystemComponent>();	
 
@@ -251,11 +269,9 @@ void UGA_GameAblilityBase::ApplyGEToSelf(FGameplayTag DataTag)
 			UE_LOG(LogTemp, Warning, TEXT("SpecHandle is not working"));
 			continue;
 		}
-		SpecHandle.Data->SetByCallerTagMagnitudes.Add(DataTag, GE.Ge_Magnitue);
+		SpecHandle.Data->SetByCallerTagMagnitudes.Add(GE.MagnitueTag, GE.Ge_Magnitue);
 		GE.GEActiveGEHandle = OwnerASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), OwnerASC);
 	}
-
-	
 
 }
 
@@ -355,6 +371,76 @@ void UGA_GameAblilityBase::SendStateEventHandle(AActor* EventActor)
 	}
 
 
+}
+
+void UGA_GameAblilityBase::InitialAbilityData(TArray<FAbilityCatalogRow*> AllDataRow)
+{
+
+	const UClass* SelfClass = GetClass();
+	UE_LOG(LogTemp, Warning, TEXT("UGA_GameAblilityBase::InitialAbilityData SelfClass is %s"), *SelfClass->GetName());
+	for (FAbilityCatalogRow* row : AllDataRow)
+	{
+		
+		UClass* RowClass = row->AbilityClass.LoadSynchronous();
+		UE_LOG(LogTemp, Warning, TEXT("UGA_GameAblilityBase::InitialAbilityData RowClass is %s"), *RowClass->GetName());
+		if (RowClass == SelfClass)
+		{
+			AbilityData = row;
+			UE_LOG(LogTemp, Error, TEXT("UGA_GameAblilityBase::InitialAbilityData is complete"));
+			return;
+		}
+		
+	}
+
+	UE_LOG(LogTemp, Error, TEXT("UGA_GameAblilityBase::InitialAbilityData is not exit"));
+
+
+}
+
+void UGA_GameAblilityBase::ApplyGECostInDataTable()
+{
+	if (!AbilityData)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UGA_GameAblilityBase::AbilityData is IsValid"));
+		return;
+	}
+
+	if(!AbilityData->CostAttribute.IsValid())
+	{
+		UE_LOG(LogTemp, Error, TEXT("UGA_GameAblilityBase::CostAttribute is IsValid"));
+		return;
+	}
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	if (!ASC)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UGA_GameAblilityBase::ASC is IsValid"));
+		return;
+	}
+
+
+	const float CostValue = AbilityData->Cost.GetValueAtLevel(GetAbilityLevel());
+	const float CurrentValue = ASC->GetNumericAttribute(AbilityData->CostAttribute);
+
+
+	UE_LOG(LogTemp, Error, TEXT("UGA_GameAblilityBase::CostValue %f"), CostValue);
+
+	ASC->ApplyModToAttribute(
+		AbilityData->CostAttribute,
+		EGameplayModOp::Additive,
+		-CostValue
+
+	);
+
+}
+
+void UGA_GameAblilityBase::SetGEMagnitue(int32 Index, float Magnitue)
+{
+	if (!AllGE_Self.IsValidIndex(Index))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SetGEMagnitue: Index %d is out of range"), Index);
+		return;
+	}
+	AllGE_Self[Index].Ge_Magnitue = Magnitue;
 }
 
 

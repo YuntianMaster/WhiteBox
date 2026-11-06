@@ -35,4 +35,6 @@ public:
 	UEnhancedInputLocalPlayerSubsystem* InputSystem;
 	UPROPERTY(BlueprintReadWrite,EditAnywhere)
 	UInputMappingContext* DefaultContentMapping;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UInputMappingContext* BattleContentMapping;
 };

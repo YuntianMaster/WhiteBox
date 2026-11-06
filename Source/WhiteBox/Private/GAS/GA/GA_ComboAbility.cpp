@@ -11,6 +11,7 @@
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "MotionWarpingComponent.h"
+#include "Player/CamerManagerComponent.h"
 #include "Structure/FGASStucts.h"
 
 
@@ -40,6 +41,11 @@ void UGA_ComboAbility::GA_ComboAttackHandle()
 	AttackingSpecHandle = MakeOutgoingGameplayEffectSpec(GE_Attacking, 1.0f);
 	AttackingHandle = K2_ApplyGameplayEffectSpecToOwner(AttackingSpecHandle);
 
+
+	UCamerManagerComponent* CMC = CharRef->GetComponentByClass<UCamerManagerComponent>();
+	CMC->CameraPlayerFaceToTargetChangeHandle(true);
+
+
 	////Montage Play
 	float AttackPlayDuration = Cast<ACharacter>(GetAvatarActorFromActorInfo())->PlayAnimMontage(ComboMontages[CombotCounter]);
 	CurrentMontage = ComboMontages[CombotCounter];
@@ -57,19 +63,49 @@ void UGA_ComboAbility::GA_ComboAttackHandle()
 		Distance = Distance.GetSafeNormal();
 		FVector WarpTarget = Target - Distance * TargetOffset;
 		float dis = FVector::Distance(start, Target);
+
+		AActor* Avatar = GetAvatarActorFromActorInfo();
 		UMotionWarpingComponent* MotionWarpComp = GetAvatarActorFromActorInfo()->GetComponentByClass<UMotionWarpingComponent>();
+		FVector TargetLocation = CharRef->TargetActor->GetActorLocation();
+		FTransform ActorTran = Avatar->GetActorTransform();
+		FVector ActorLocation = Avatar->GetActorLocation();
+		FVector Directon = (ActorLocation - TargetLocation).GetSafeNormal();
+		FVector WarpLoc = TargetLocation + Directon * ComboWarpDistanceOffset + ActorTran.TransformVector(ComboWarpOffset);
+		FRotator WarpRot = (-Directon).Rotation();
+		WarpRot.Roll = 0;
+		WarpRot.Pitch = 0;
+
+	
+
+		//MotionWarpComp->OnPreUpdate.RemoveDynamic(this, &UGA_ComboAbility::OnPlayerComboMotionWarpUpdate);
 		if (dis < MotionWarpDistance)
 		{
 			//UE_LOG(LogTemp, Warning, TEXT("Distance: %f"), dis);
-			MotionWarpComp->OnPreUpdate.RemoveDynamic(this, &UGA_ComboAbility::OnPlayerComboMotionWarpUpdate);
-			MotionWarpComp->OnPreUpdate.AddDynamic(this, &UGA_ComboAbility::OnPlayerComboMotionWarpUpdate);
+			
+			//MotionWarpComp->OnPreUpdate.AddDynamic(this, &UGA_ComboAbility::OnPlayerComboMotionWarpUpdate);
 
+			MotionWarpComp->AddOrUpdateWarpTargetFromLocation(
+				ComboWarpName,
+				WarpLoc
+			);
+
+
+			if (bComboDebugMode)
+				UKismetSystemLibrary::DrawDebugSphere(
+					GetWorld(),
+					WarpLoc,
+					50.f,
+					12,
+					FLinearColor::White,
+					2.f,
+					5.f
+				);
 
 		}
 
 		else
 		{
-			MotionWarpComp->RemoveWarpTarget("Attack");
+			MotionWarpComp->RemoveWarpTarget(ComboWarpName);
 
 		}
 	}
@@ -116,6 +152,12 @@ void UGA_ComboAbility::OnPlayerComboMotionWarpUpdate(UMotionWarpingComponent* MW
 		return;
 	}
 	FVector ActorLocation = Avatar->GetActorLocation();
+
+	if (!CharRef->TargetActor)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UGA_ComboAbility::OnPlayerComboMotionWarpUpdate: CharRef is invaid"));
+		return;
+	}
 	FVector TargetLocation = CharRef->TargetActor->GetActorLocation();
 	FTransform ActorTran = Avatar->GetActorTransform();
 	FVector Directon = (ActorLocation - TargetLocation).GetSafeNormal();
@@ -135,16 +177,7 @@ void UGA_ComboAbility::OnPlayerComboMotionWarpUpdate(UMotionWarpingComponent* MW
 	//	WarpLoc
 	//);
 
-	if(bComboDebugMode)
-		UKismetSystemLibrary::DrawDebugSphere(
-			GetWorld(),
-			WarpLoc,
-			50.f,
-			12,
-			FLinearColor::White,
-			2.f,
-			5.f
-		);
+
 }
 
 void UGA_ComboAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -157,6 +190,14 @@ void UGA_ComboAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 	);
 	OnTraceHitSuccessTask->EventReceived.AddUniqueDynamic(this, &UGA_ComboAbility::OnComboTraceHitHandle);
 	OnTraceHitSuccessTask->ReadyForActivation();
+}
+
+void UGA_ComboAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+{
+	UCamerManagerComponent* CMC = CharRef->GetComponentByClass<UCamerManagerComponent>();
+	CMC->CameraPlayerFaceToTargetChangeHandle(true);
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
 void UGA_ComboAbility::OnComboTraceHitHandle(FGameplayEventData Payload)

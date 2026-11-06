@@ -4,6 +4,7 @@
 #include "Animation/PlayerAnimInstance.h"
 #include "Combat/WeaponSystemComp.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Player/PlayerCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 void UPlayerAnimInstance::UpdateTheVelocity()
@@ -88,6 +89,18 @@ void UPlayerAnimInstance::ProcessTurnYawCurve()
 	
 	}
 	LastFrameTurnYawCurveValue = FrameTurnYawCurveValue;
+}
+
+void UPlayerAnimInstance::UpdateTargetLocation()
+{
+	APlayerCharacter* CharRef = Cast<APlayerCharacter>(GetOwningActor());
+	if(CharRef)
+	{
+		if (CharRef->TargetActor)
+		{
+			TargetLocation = CharRef->TargetActor->GetActorLocation();
+		}
+	}
 }
 
 
@@ -244,7 +257,7 @@ void UPlayerAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 	UpdateAccelerationDirection();
 	UpdateCharacterGateState();
 	UpdateDeltaLocation();
-	
+	UpdateTargetLocation();
 
 	//UpdateRootYawOffset(DeltaSeconds);
 }

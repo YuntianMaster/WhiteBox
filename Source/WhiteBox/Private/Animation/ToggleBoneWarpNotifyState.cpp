@@ -72,9 +72,9 @@ void UToggleBoneWarpNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, U
 	TargetDist = FVector::Distance(TargetBoneLoc, MeshComp->GetOwner()->GetActorLocation());
 
 	
-	UE_LOG(LogTemp, Warning, TEXT("UToggleBoneWarpNotifyState::NotifyTick: StartBoneLoc: %s, TargetBoneLoc: %s ,TargetDist: %f , MaxBoneLoc: %f"), 
-		*StartBoneLoc.ToString(), *TargetBoneLoc.ToString(),
-		TargetDist, MaxDist);
+	//UE_LOG(LogTemp, Warning, TEXT("UToggleBoneWarpNotifyState::NotifyTick: StartBoneLoc: %s, TargetBoneLoc: %s ,TargetDist: %f , MaxBoneLoc: %f"), 
+	//	*StartBoneLoc.ToString(), *TargetBoneLoc.ToString(),
+	//	TargetDist, MaxDist);
 	NotifyAnimCurrentTime = NotifyAnimStartTime;
 }
 
@@ -147,7 +147,7 @@ void UToggleBoneWarpNotifyState::NotifyTick(USkeletalMeshComponent* MeshComp, UA
 	const FVector BoneWarpLoc = StartBoneLoc + Scale * (TargetBoneLoc - StartBoneLoc);
 	const FRotator BoneWarpRot = MeshComp->GetSocketRotation(WarpBoneName);
 
-	UE_LOG(LogTemp, Warning, TEXT("UToggleBoneWarpNotifyState::NotifyTick: BoneWarpLoc : %s"), *BoneWarpLoc.ToString())
+	/*UE_LOG(LogTemp, Warning, TEXT("UToggleBoneWarpNotifyState::NotifyTick: BoneWarpLoc : %s"), *BoneWarpLoc.ToString())*/
 
 	
 

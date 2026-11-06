@@ -66,7 +66,7 @@ void UPlayerTraceComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 	}
 
 
-	UE_LOG(LogTemp, Warning, TEXT("Attacking!"));
+	//UE_LOG(LogTemp, Warning, TEXT("Attacking!"));
 	TArray<AWeaponGeneral*> FCurrentWeapons = 
 		WeaponSystemComp->AllGaintedWeaponStructs[WeaponSystemComp->ECurrentWeapons];
 	//TArray<FHitResult> AllOutHits;
@@ -254,6 +254,7 @@ void UPlayerTraceComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 		Playload_TraceHit.TargetData.Add(TraceMontageData);
 		Playload_TraceHit.TargetData.Add(SingleTargetData);
 
+		UE_LOG(LogTemp, Warning, TEXT("TRACE COMP: TargetActor: %s"), *TargetActor->GetName());
 
 		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
 			OwnerActor,

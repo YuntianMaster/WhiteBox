@@ -58,14 +58,14 @@ protected:
 	void RemoveAttackMontageEndAbility();
 	
 	
+	virtual void InitialAbilityData(TArray<FAbilityCatalogRow*> AllDataRow) override;
 
 		
 protected:
 
 	//UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	//bool isAutoEnAblitiy{ true };
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Damage")
-	float DamageAmount{ 5.f };
+	float DamageAmount{ 0.f };
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "GroundCheck")
 	bool bIsNeedGroundCheck{false};
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bisNeedGroundCheck"), Category = "GroundCheck")
@@ -152,10 +152,12 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (EditCondition = "bIsCustomEndTime"), Category = "EndAbilityPara")
 	float EndTime = { 8.f };
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Debug")
+	bool bDebugMode;
+
+	void DebugModeHandle();
 
 public:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	float DamageMagnitude;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitCritial")
 	bool bIsCriticalHit{false};
 	int32 MontageInstanceID;

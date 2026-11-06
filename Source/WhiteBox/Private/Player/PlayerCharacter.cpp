@@ -80,7 +80,10 @@ void APlayerCharacter::OnBockingTagChange(const FGameplayTag Callbacktage, int32
 
 	}
 	if (NewCount <= 0)
+	{
 		PlayerStats = EPlayerStates::CharacterNoneStats;
+		PlayerAnim->SetAnimLayerWithPlayerStats(PlayerStats);
+	}
 }
 
 void APlayerCharacter::OnAimingTagChange(const FGameplayTag Callbacktage, int32 NewCount)

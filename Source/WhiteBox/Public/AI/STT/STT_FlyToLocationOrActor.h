@@ -30,4 +30,12 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float MovementSpeed{ 1000.f };
 	AActor* TargetActor;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FVector TargetOffset;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bIsDebug;
+
+	FVector PlayerStartLoc;
+	FVector EnemyStartLoc;
+	FVector ToPlayerDirect;
 };

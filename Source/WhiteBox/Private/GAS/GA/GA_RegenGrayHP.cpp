@@ -40,22 +40,25 @@ void UGA_RegenGrayHP::RegenGrayHPHandle(const FOnAttributeChangeData& Data)
 		TEXT("RegenGrayHPDataHandle"),
 		this
 	};
-
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	const UBasicAttributeSet* BasicAtr = ASC ? Cast<UBasicAttributeSet>(ASC->GetAttributeSet(UBasicAttributeSet::StaticClass())) : nullptr;
+	float CurrentGayHP = BasicAtr->GetGrayHealth();
 
 	if (NewValue < OldValue)
 	{
 		GetAbilitySystemComponentFromActorInfo()->RemoveActiveGameplayEffect(ActiveRegenGrayHPEffectHandle,-1);
-		UKismetSystemLibrary::RetriggerableDelay(GetWorld(), DelayRecoveyGrayHPTime, RegenGrayHPInfo);
+		if(NewValue < CurrentGayHP)
+			UKismetSystemLibrary::RetriggerableDelay(GetWorld(), DelayRecoveyGrayHPTime, RegenGrayHPInfo);
 	}
 
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
-	const UBasicAttributeSet* BasicAtr = ASC ? Cast<UBasicAttributeSet>(ASC->GetAttributeSet(UBasicAttributeSet::StaticClass())) : nullptr;
+	
+	
 	if (!BasicAtr)
 	{
 		return;
 	}
 
-	float CurrentGayHP = BasicAtr->GetGrayHealth();
+	
 	if (NewValue >= CurrentGayHP) {
 
 		GetAbilitySystemComponentFromActorInfo()->RemoveActiveGameplayEffect(ActiveRegenGrayHPEffectHandle, -1);

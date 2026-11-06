@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "Structure/FGASStucts.h"
 #include "EnvironmentQuery/EnvQueryTypes.h"
 #include "GA_GameAblilityBase.generated.h"
 
@@ -28,6 +29,8 @@ struct WHITEBOX_API FGA_GE_Data
 	float GE_Lv;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsRemoveGE_AtEnd{ false };
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag MagnitueTag;
 
 	FActiveGameplayEffectHandle GEActiveGEHandle;
 };
@@ -77,8 +80,10 @@ public:
 		FGameplayTagContainer* OptionalRelevantTags) const override;
 
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GA_DataTable")
+	TObjectPtr<UDataTable> GA_DataTable;
 
-
+	FAbilityCatalogRow* AbilityData = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GE_Self")
 	TArray<FGA_GE_Data> AllGE_Self;
@@ -144,7 +149,7 @@ protected:
 
 	//向自己身执行GE
 	UFUNCTION(BlueprintCallable)
-	void ApplyGEToSelf(FGameplayTag DataTag);
+	void ApplyGEToSelf();
 	//向攻击者执行GE
 	UFUNCTION(BlueprintCallable)
 	void ApplyGEToAttacker(FGameplayEventData Playload, FGameplayTag DataTag);
@@ -154,6 +159,15 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void SendStateEventHandle(AActor* EventActor);
 
+
+	//从DataTable中读取GA配置
+	virtual void InitialAbilityData(TArray<FAbilityCatalogRow*> AllDataRow);
+	UFUNCTION(BlueprintCallable)
+	void ApplyGECostInDataTable();
+
+	//设置GE数值
+	UFUNCTION(BlueprintCallable)
+	void SetGEMagnitue(int32 Index, float Magnitue);
 
 
 

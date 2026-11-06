@@ -37,10 +37,6 @@ UCLASS()
 class WHITEBOX_API UGA_CanDeflectAttack : public UGA_WarpMontageAttack
 {
 	GENERATED_BODY()
-public:
-	
-	virtual void OnTraceHitHandle(FGameplayEventData Payload) override;
-	
 
 protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "SuperParry")

@@ -153,6 +153,8 @@ void AEnemyCharacter::OnEnemyBlockingTagChange(const FGameplayTag Callbacktage, 
 	if (NewCount <= 0)
 	{
 		EnemyPlayerStats = EPlayerStates::CharacterNoneStats;
+		UEnemyAnimInstance* EnemyAnimInst = Cast<UEnemyAnimInstance>(GetMesh()->GetAnimInstance());
+		EnemyAnimInst->SetAnimLayerWithPlayerStats(EnemyPlayerStats);
 
 	}
 }

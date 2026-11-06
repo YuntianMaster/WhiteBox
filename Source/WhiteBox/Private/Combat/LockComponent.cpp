@@ -108,7 +108,7 @@ void ULockComponent::OnlockStart()
 		During,
 		false
 	);
-
+	//切换CA_Camera
 	FGameplayTag LockLockTargetTag{ FGameplayTag::RequestGameplayTag("Event.Camera.LockTarget") };
 	CamerManagerComp->CameraChangeHandle(LockLockTargetTag);
 	

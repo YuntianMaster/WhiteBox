@@ -17,6 +17,7 @@
 #include "Player/CamerManagerComponent.h"
 #include "Player/PlayerCharacter.h"
 #include "Kismet/GameplayStatics.h"
+#include "Combat/PlayerTraceComponent.h"
 #include "EnvironmentQuery/EnvQueryManager.h"
 
 namespace WarpMontageAttack_Private
@@ -156,7 +157,7 @@ void UGA_WarpMontageAttack::NoWarpMontageHandle()
 			true,
 			1.f,
 			StartTime,
-			false
+			true
 		);
 
 	if (!MontageAttackTask)
@@ -262,6 +263,7 @@ void UGA_WarpMontageAttack::ActivateAbility(const FGameplayAbilitySpecHandle Han
 
 	//接收TraceComp的碰撞结果
 
+	DebugModeHandle();
 	GA_TargetActor = bIsEnemyAbility ? EnemyAIRef->EnemyTargetActor : CharRef->TargetActor;
 
 	UAbilityTask_WaitGameplayEvent* TraceHitSuccess = 
@@ -339,10 +341,10 @@ void UGA_WarpMontageAttack::OnTraceHitHandle(FGameplayEventData Payload)
 		static_cast<FTraceMontageID*>(const_cast<FGameplayAbilityTargetData*>(TargetData));
 	FGameplayAbilityTargetData_SingleTargetHit* HitResultData = 
 		static_cast<FGameplayAbilityTargetData_SingleTargetHit*>(const_cast<FGameplayAbilityTargetData*>(HitData));
-	Payload.EventMagnitude = DamageMagnitude;
+	Payload.EventMagnitude = DamageAmount;
 	Data->DamageAmout = DamageAmount;
 	Data->ToTargetGameplayCueTag = ToTargetGameplayCueTag;
-
+	Data->bIsCritialHit = bIsCriticalHit;
 	FGameplayEffectContextHandle HitContextHandle = MakeEffectContext(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo());
 	HitContextHandle.AddInstigator(GAOnwer, GAOnwer);
 	HitContextHandle.AddHitResult(HitResultData->HitResult);
@@ -350,8 +352,8 @@ void UGA_WarpMontageAttack::OnTraceHitHandle(FGameplayEventData Payload)
 
 
 
-	FGameplayTag HitTag = 
-		bIsCriticalHit ? FGameplayTag::RequestGameplayTag("Event.Combat.TakeCriticalHit") : FGameplayTag::RequestGameplayTag("Event.Combat.TakeHit");
+	FGameplayTag HitTag = FGameplayTag::RequestGameplayTag("Event.Combat.TakeHit");
+		/*bIsCriticalHit ? FGameplayTag::RequestGameplayTag("Event.Combat.TakeCriticalHit") : FGameplayTag::RequestGameplayTag("Event.Combat.TakeHit");*/
 	AActor* TargetActor = const_cast<AActor*>(Payload.Target.Get());
 	if (MontageInstanceID == Data->TRACE_MONTAGE_ID)
 	{
@@ -422,6 +424,17 @@ void UGA_WarpMontageAttack::RemoveAttackMontageEndAbility()
 	MontageAttackTask->OnCompleted.RemoveDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
 	MontageAttackTask->OnCancelled.RemoveDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
 	MontageAttackTask->OnInterrupted.RemoveDynamic(this, &UGA_WarpMontageAttack::OnAttackCompleted);
+}
+
+void UGA_WarpMontageAttack::InitialAbilityData(TArray<FAbilityCatalogRow*> AllDataRow)
+{
+	Super::InitialAbilityData(AllDataRow);
+	if(AbilityData)
+	{
+		DamageAmount = AbilityData->Damage.GetValueAtLevel(GetAbilityLevel());
+		UE_LOG(LogTemp, Warning, TEXT(" UGA_WarpMontageAttack::InitialAbilityData : Damage add!"));
+		ToTargetGameplayCueTag = AbilityData->ToTargetHitGameCue;
+	}
 }
 
 void UGA_WarpMontageAttack::SpicalHitReactionMontageHandle()
@@ -517,6 +530,28 @@ void UGA_WarpMontageAttack::SpicalHitReactionMontageHandle()
 	
 }
 
+void UGA_WarpMontageAttack::DebugModeHandle()
+{
+	UPlayerTraceComponent* PTC = GetAvatarActorFromActorInfo()->GetComponentByClass<UPlayerTraceComponent>();
+	if (!PTC)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UGA_WarpMontageAttack::DebugModeHandle: PTC not found"));
+		return;
+	}
+
+	if (bDebugMode)
+	{
+		
+		PTC->bDebugMode = bDebugMode;
+
+	}
+
+	else
+	{
+		PTC->bDebugMode = bDebugMode;
+	}
+}
+
 
 
 
@@ -603,7 +638,7 @@ void UGA_WarpMontageAttack::WarpTarget_NOTRACKING()
 			true,
 			1.f,
 			StartTime,
-			false
+			true
 		);
 
 	if (!MWcomp)
@@ -787,7 +822,8 @@ void UGA_WarpMontageAttack::OnMotionWarpUpdate(UMotionWarpingComponent* UWC)
 				{
 
 					FVector EndLocation = ActorLocation + Avatar->GetActorRotation().RotateVector(EndWarpingLocation);
-					UWC->AddOrUpdateWarpTargetFromLocation(EndWarpingName, EndLocation);
+					//UWC->AddOrUpdateWarpTargetFromLocation(EndWarpingName, EndLocation);
+					UWC->AddOrUpdateWarpTargetFromLocationAndRotation(EndWarpingName, EndLocation, WarpRot);
 				}
 
 			}
@@ -827,7 +863,7 @@ void UGA_WarpMontageAttack::WarpTarget_TRACKING()
 			true,
 			1.f,
 			StartTime,
-			false
+			true
 		);
 
 

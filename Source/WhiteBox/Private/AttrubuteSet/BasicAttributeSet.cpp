@@ -44,7 +44,7 @@ void UBasicAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute,
 
 	Super::PreAttributeChange(Attribute, NewValue);
 	if (Attribute == GetHealthAttribute()) {
-		NewValue = FMath::Clamp(NewValue, 0, GetMaxHealth());
+		NewValue = FMath::Clamp(NewValue, 0, GetGrayHealth());
 		UE_LOG(LogTemp, Warning, TEXT("Pre health:%f"), GetHealth());
 	}
 	if (Attribute == GetStaminaAttribute()) {
@@ -59,6 +59,8 @@ void UBasicAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute,
 
 		NewValue = FMath::Clamp(NewValue, 0, GetMaxPoise());
 	}
+
+	
 
 
 }
@@ -106,18 +108,19 @@ void UBasicAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallb
 			SetShield(GetShield() - totalDamage);
 			if (RemainingDamage > 0)
 			{
+				SetGrayHealth(GetHealth() - RemainingDamage);
 				SetHealth(GetHealth() - RemainingDamage);
 			}
 		}
 		else
 		{
+			//灰血结算
+			SetGrayHealth(GetHealth() - totalDamage);
 			SetHealth(GetHealth() - totalDamage);
 		}
 
 
-		//灰血结算
-
-		SetGrayHealth(GetHealth());
+		
 
 		if (GetMaxHealth() > 0.f && GetHealth() / GetMaxHealth() < 0.5f)
 		{
